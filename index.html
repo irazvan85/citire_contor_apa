@@ -280,6 +280,39 @@
   .api-status.inactive { background: rgba(139,148,158,0.1); color: var(--muted); border: 1px solid var(--border); }
   .api-status.ocr { background: rgba(0,180,216,0.1); color: var(--accent); border: 1px solid rgba(0,180,216,0.25); }
   .api-hint { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 10px; line-height: 1.6; }
+  /* ── Crop Modal ───────────────────────────────────────────────────────────── */
+  #crop-modal {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(0,0,0,0.88);
+    display: none; align-items: center; justify-content: center;
+    padding: 16px;
+  }
+  .crop-modal-inner {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 20px 22px;
+    max-width: 860px; width: 100%; max-height: 95vh; overflow: auto;
+  }
+  .crop-modal-title {
+    font-size: 16px; font-weight: 700; margin-bottom: 6px;
+  }
+  .crop-modal-hint {
+    font-family: 'DM Mono', monospace; font-size: 12px;
+    color: var(--muted); margin-bottom: 14px; line-height: 1.5;
+  }
+  .crop-canvas-wrap {
+    text-align: center; overflow: auto;
+    background: #000; border-radius: 10px; line-height: 0;
+  }
+  #crop-canvas {
+    cursor: crosshair; max-width: 100%;
+    touch-action: none; border-radius: 10px;
+    display: block; margin: 0 auto;
+  }
+  .crop-actions {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px;
+  }
+  .crop-actions .btn { flex: 1; }
+  .crop-actions .crop-actions-close { flex: none; padding: 9px 16px; }
 </style>
 </head>
 <body>
@@ -593,6 +626,25 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- CROP MODAL -->
+<div id="crop-modal">
+  <div class="crop-modal-inner">
+    <div class="crop-modal-title">✂ Selectați zona de interes</div>
+    <p class="crop-modal-hint">
+      Trageți pe imagine pentru a selecta zona cu <strong>seria</strong> și <strong>indexul</strong> contorului.<br>
+      Dacă săriți acest pas, imaginea completă va fi analizată.
+    </p>
+    <div class="crop-canvas-wrap">
+      <canvas id="crop-canvas"></canvas>
+    </div>
+    <div class="crop-actions">
+      <button class="btn btn-primary" onclick="confirmCrop()">✓ Confirmă selecția</button>
+      <button class="btn btn-outline" onclick="useFullImage()">↗ Imaginea completă</button>
+      <button class="btn btn-outline crop-actions-close" onclick="closeCropModal()">✕ Anulează</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const meters = ['bucatarie', 'baia-mare', 'baia-mica'];
 const streams = {};
@@ -643,17 +695,16 @@ function capturePhoto(meter) {
   const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
   if (streams[meter]) streams[meter].getTracks().forEach(t => t.stop());
   vid.style.display = 'none';
-  showPreview(meter, dataUrl);
-  analyzeImage(meter, dataUrl);
   const cb = document.getElementById('capture-btn-' + meter);
   if (cb) cb.remove();
+  showCropModal(meter, dataUrl);
 }
 
 function loadFile(input, meter) {
   const file = input.files[0];
   if (!file) return;
   const reader = new FileReader();
-  reader.onload = e => { showPreview(meter, e.target.result); analyzeImage(meter, e.target.result); };
+  reader.onload = e => { showCropModal(meter, e.target.result); };
   reader.readAsDataURL(file);
 }
 
@@ -1144,6 +1195,162 @@ function resetAll() {
   updateTable();
   showToast('Formular resetat.', '');
 }
+
+// ── Crop Modal ────────────────────────────────────────────────────────────────
+
+let _cropMeter   = null;
+let _cropDataUrl = null;
+let _cropImg     = null;
+let _cropScale   = 1;
+let _cropRect    = null;   // { x, y, w, h } in canvas display coords
+let _cropDragging = false;
+let _cropStart   = null;
+
+function showCropModal(meter, dataUrl) {
+  _cropMeter   = meter;
+  _cropDataUrl = dataUrl;
+  _cropRect    = null;
+
+  const modal = document.getElementById('crop-modal');
+  modal.style.display = 'flex';
+
+  _cropImg = new Image();
+  _cropImg.onload = () => {
+    const canvas = document.getElementById('crop-canvas');
+    const maxW = Math.min(window.innerWidth - 64, 820);
+    const maxH = Math.floor(window.innerHeight * 0.62);
+    _cropScale = Math.min(maxW / _cropImg.width, maxH / _cropImg.height, 1);
+    canvas.width  = Math.round(_cropImg.width  * _cropScale);
+    canvas.height = Math.round(_cropImg.height * _cropScale);
+    _drawCropCanvas();
+  };
+  _cropImg.src = dataUrl;
+}
+
+function _drawCropCanvas() {
+  const canvas = document.getElementById('crop-canvas');
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.drawImage(_cropImg, 0, 0, canvas.width, canvas.height);
+
+  if (_cropRect && (Math.abs(_cropRect.w) > 2 || Math.abs(_cropRect.h) > 2)) {
+    const { x, y, w, h } = _normalizeRect(_cropRect);
+    // Dim the area outside the selection
+    ctx.fillStyle = 'rgba(0,0,0,0.55)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    // Restore the selected region
+    ctx.drawImage(
+      _cropImg,
+      x / _cropScale, y / _cropScale, w / _cropScale, h / _cropScale,
+      x, y, w, h
+    );
+    // Draw selection border
+    ctx.strokeStyle = '#00b4d8';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6, 3]);
+    ctx.strokeRect(x + 1, y + 1, w - 2, h - 2);
+    ctx.setLineDash([]);
+    // Corner handles
+    const hs = 8;
+    ctx.fillStyle = '#00b4d8';
+    [[x,y],[x+w,y],[x,y+h],[x+w,y+h]].forEach(([cx,cy]) => {
+      ctx.fillRect(cx - hs/2, cy - hs/2, hs, hs);
+    });
+  }
+}
+
+function _normalizeRect(r) {
+  return {
+    x: r.w < 0 ? r.x + r.w : r.x,
+    y: r.h < 0 ? r.y + r.h : r.y,
+    w: Math.abs(r.w),
+    h: Math.abs(r.h)
+  };
+}
+
+function _getCropPos(canvas, e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const src = e.touches ? e.touches[0] : e;
+  return {
+    x: Math.max(0, Math.min(canvas.width,  (src.clientX - rect.left) * scaleX)),
+    y: Math.max(0, Math.min(canvas.height, (src.clientY - rect.top)  * scaleY))
+  };
+}
+
+function confirmCrop() {
+  let finalDataUrl = _cropDataUrl;
+
+  if (_cropRect && Math.abs(_cropRect.w) > 5 && Math.abs(_cropRect.h) > 5) {
+    const { x, y, w, h } = _normalizeRect(_cropRect);
+    const origX = Math.round(x / _cropScale);
+    const origY = Math.round(y / _cropScale);
+    const origW = Math.round(w / _cropScale);
+    const origH = Math.round(h / _cropScale);
+
+    const offscreen = document.createElement('canvas');
+    offscreen.width  = origW;
+    offscreen.height = origH;
+    offscreen.getContext('2d').drawImage(_cropImg, origX, origY, origW, origH, 0, 0, origW, origH);
+    finalDataUrl = offscreen.toDataURL('image/jpeg', 0.95);
+  }
+
+  const meter = _cropMeter;
+  closeCropModal();
+  showPreview(meter, finalDataUrl);
+  analyzeImage(meter, finalDataUrl);
+}
+
+function useFullImage() {
+  const meter = _cropMeter;
+  const dataUrl = _cropDataUrl;
+  closeCropModal();
+  showPreview(meter, dataUrl);
+  analyzeImage(meter, dataUrl);
+}
+
+function closeCropModal() {
+  document.getElementById('crop-modal').style.display = 'none';
+  _cropMeter   = null;
+  _cropDataUrl = null;
+  _cropImg     = null;
+  _cropRect    = null;
+  _cropDragging = false;
+}
+
+// Attach canvas interaction events (script runs after DOM is ready at end of body)
+(function() {
+  const canvas = document.getElementById('crop-canvas');
+
+  function onDown(e) {
+    e.preventDefault();
+    const pos = _getCropPos(canvas, e);
+    _cropDragging = true;
+    _cropStart = pos;
+    _cropRect = { x: pos.x, y: pos.y, w: 0, h: 0 };
+  }
+  function onMove(e) {
+    if (!_cropDragging) return;
+    e.preventDefault();
+    const pos = _getCropPos(canvas, e);
+    _cropRect = { x: _cropStart.x, y: _cropStart.y, w: pos.x - _cropStart.x, h: pos.y - _cropStart.y };
+    _drawCropCanvas();
+  }
+  function onUp(e) {
+    if (!_cropDragging) return;
+    e.preventDefault();
+    _cropDragging = false;
+    _drawCropCanvas();
+  }
+
+  canvas.addEventListener('mousedown',  onDown, { passive: false });
+  canvas.addEventListener('mousemove',  onMove, { passive: false });
+  canvas.addEventListener('mouseup',    onUp,   { passive: false });
+  canvas.addEventListener('touchstart', onDown, { passive: false });
+  canvas.addEventListener('touchmove',  onMove, { passive: false });
+  canvas.addEventListener('touchend',   onUp,   { passive: false });
+})();
 
 function showToast(msg, type) {
   const t = document.getElementById('toast');
