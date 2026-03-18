@@ -313,6 +313,32 @@
   }
   .crop-actions .btn { flex: 1; }
   .crop-actions .crop-actions-close { flex: none; padding: 9px 16px; }
+
+  /* ── Baia Mică inner layout ───────────────────────────────────────────── */
+  .baia-mica-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* ── Table scroll wrapper ─────────────────────────────────────────────── */
+  .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* ── Mobile responsiveness ────────────────────────────────────────────── */
+  @media (max-width: 560px) {
+    .wrapper { padding: 20px 14px 48px; }
+    header { gap: 12px; margin-bottom: 28px; }
+    .header-text h1 { font-size: 21px; }
+    .logo { width: 44px; height: 44px; font-size: 20px; }
+    .meters-grid { gap: 12px; margin-bottom: 24px; }
+    .meter-card { padding: 16px; }
+    .baia-mica-inner { grid-template-columns: 1fr; }
+    .reading-input { font-size: 22px; }
+    .table-section { padding: 16px 14px; }
+    .settings-panel { padding: 14px 16px; }
+    .actions-row { flex-direction: column; }
+    .actions-row .btn { width: 100%; text-align: center; }
+    .toast { right: 12px; left: 12px; max-width: none; bottom: 16px; }
+  }
+  /* ── Minimum touch target for all buttons ─────────────────────────────── */
+  .btn { min-height: 44px; }
+  .nr-btn { min-width: 44px; min-height: 44px; }
 </style>
 </head>
 <body>
@@ -431,6 +457,7 @@
         </div>
         <div class="reading-status status-pending" id="status-bucatarie">Așteaptă poză…</div>
         <div id="conf-pill-bucatarie"></div>
+      </div>
       <div class="reading-box">
         <div class="reading-label">Index vechi</div>
         <div class="reading-value">
@@ -494,6 +521,7 @@
         </div>
         <div class="reading-status status-pending" id="status-baia-mare">Așteaptă poză…</div>
         <div id="conf-pill-baia-mare"></div>
+      </div>
       <div class="reading-box">
         <div class="reading-label">Index vechi</div>
         <div class="reading-value">
@@ -512,7 +540,7 @@
           <div class="meter-sub">Contor apă rece (opțional)</div>
         </div>
       </div>
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+      <div class="baia-mica-inner">
         <div>
           <div class="camera-area" id="cam-baia-mica">
             <div class="placeholder"><div class="icon">📷</div><div>Fă o poză contorului</div></div>
@@ -561,6 +589,7 @@
             </div>
             <div class="reading-status status-pending" id="status-baia-mica">Așteaptă poză…</div>
             <div id="conf-pill-baia-mica"></div>
+          </div>
           <div class="reading-box">
             <div class="reading-label">Index vechi</div>
             <div class="reading-value">
@@ -577,6 +606,7 @@
   <!-- TABLE -->
   <div class="table-section">
     <div class="section-title">📊 Tabel Consum — APA RECE</div>
+    <div class="table-wrap">
     <table class="form-table">
       <thead>
         <tr>
@@ -615,6 +645,7 @@
         </tr>
       </tbody>
     </table>
+    </div>
     <div class="divider"></div>
     <div class="actions-row">
       <button class="btn btn-green" onclick="downloadCSV()">⬇ Descarcă CSV</button>
