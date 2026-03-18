@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Citire Contoare Apă – Ripensia 21</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --accent: #00b4d8;
+    --accent2: #0077b6;
+    --green: #26c485;
+    --red: #f85149;
+    --text: #e6edf3;
+    --muted: #8b949e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; min-height: 100vh; }
+  body::before {
+    content: ''; position: fixed; inset: 0;
+    background-image: linear-gradient(rgba(0,180,216,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,180,216,0.04) 1px, transparent 1px);
+    background-size: 32px 32px; pointer-events: none; z-index: 0;
+  }
+  .wrapper { position: relative; z-index: 1; max-width: 860px; margin: 0 auto; padding: 32px 20px 60px; }
+  header { display: flex; align-items: flex-start; gap: 18px; margin-bottom: 40px; }
+  .logo {
+    width: 52px; height: 52px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 14px; display: flex; align-items: center; justify-content: center;
+    font-size: 24px; flex-shrink: 0; box-shadow: 0 0 24px rgba(0,180,216,0.3);
+  }
+  .header-text h1 { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; line-height: 1.1; }
+  .header-text p { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: 'DM Mono', monospace; }
+  .badge {
+    display: inline-block; background: rgba(0,180,216,0.12); color: var(--accent);
+    border: 1px solid rgba(0,180,216,0.25); border-radius: 6px;
+    font-size: 11px; font-family: 'DM Mono', monospace; padding: 2px 8px; margin-top: 6px;
+  }
+  .meters-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+  @media(max-width: 560px) { .meters-grid { grid-template-columns: 1fr; } }
+  .meter-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 16px; padding: 22px; transition: border-color 0.2s;
+  }
+  .meter-card:hover { border-color: var(--accent); }
+  .meter-card.active { border-color: var(--accent); box-shadow: 0 0 20px rgba(0,180,216,0.15); }
+  .meter-card.done { border-color: var(--green); box-shadow: 0 0 20px rgba(38,196,133,0.1); }
+  .meter-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .meter-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
+  .icon-bucatarie { background: rgba(0,180,216,0.15); }
+  .icon-baia-mare { background: rgba(0,119,182,0.2); }
+  .icon-baia-mica { background: rgba(38,196,133,0.15); }
+  .meter-title { font-weight: 700; font-size: 15px; }
+  .meter-sub { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+  .camera-area {
+    position: relative; border-radius: 10px; overflow: hidden;
+    background: #000; aspect-ratio: 4/3; margin-bottom: 12px; border: 1px solid var(--border);
+  }
+  .camera-area video, .camera-area canvas {
+    width: 100%; height: 100%; object-fit: cover; display: none;
+  }
+  .camera-area img.preview {
+    width: 100%; height: 100%; object-fit: contain; display: none; background: #000;
+  }
+  .camera-area .placeholder {
+    position: absolute; inset: 0; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 8px; color: var(--muted); font-size: 13px;
+  }
+  .camera-area .placeholder .icon { font-size: 32px; }
+  /* Overlay pe imagine după citire */
+  .img-overlay {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    background: linear-gradient(transparent, rgba(0,0,0,0.85));
+    padding: 28px 10px 10px;
+    display: none;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .img-overlay.visible { display: flex; }
+  .overlay-index {
+    display: flex; align-items: baseline; gap: 5px;
+    line-height: 1;
+  }
+  .overlay-input-idx {
+    font-family: 'DM Mono', monospace;
+    font-size: 20px; font-weight: 500;
+    color: var(--accent);
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed rgba(0,180,216,0.5);
+    outline: none;
+    width: 90px;
+    padding: 1px 0;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.8);
+    caret-color: var(--accent);
+  }
+  .overlay-input-idx:focus { border-bottom-color: var(--accent); }
+  .overlay-input-idx.err { color: var(--red); border-bottom-color: var(--red); }
+  .overlay-unit-txt {
+    font-family: 'DM Mono', monospace; font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+  }
+  .overlay-serie-row {
+    display: flex; align-items: center; gap: 5px;
+  }
+  .overlay-serie-lbl {
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    color: rgba(255,255,255,0.45);
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+    white-space: nowrap;
+  }
+  .overlay-input-serie {
+    font-family: 'DM Mono', monospace;
+    font-size: 12px; font-weight: 500;
+    color: #e0a800;
+    background: transparent;
+    border: none;
+    border-bottom: 1px dashed rgba(224,168,0,0.4);
+    outline: none;
+    width: 100px;
+    padding: 1px 0;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+    caret-color: #e0a800;
+  }
+  .overlay-input-serie:focus { border-bottom-color: #e0a800; }
+  .overlay-input-serie.err { color: var(--red); border-bottom-color: var(--red); }
+  .overlay-edit-hint {
+    font-family: 'DM Mono', monospace; font-size: 9px;
+    color: rgba(255,255,255,0.3);
+    margin-top: 2px;
+  }
+  /* Confidence bar */
+  .conf-row {
+    display: flex; align-items: center; gap: 6px;
+    margin-top: 3px;
+  }
+  .conf-bar-wrap {
+    flex: 1; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,0.12); overflow: hidden;
+  }
+  .conf-bar {
+    height: 100%; border-radius: 2px;
+    transition: width 0.5s ease, background 0.3s;
+  }
+  .conf-label {
+    font-family: 'DM Mono', monospace; font-size: 9px;
+    color: rgba(255,255,255,0.45); white-space: nowrap; min-width: 28px; text-align: right;
+  }
+  /* Validation warning on inputs */
+  .overlay-input-idx.warn,
+  .overlay-input-serie.warn { color: #f0a500; border-bottom-color: #f0a500; }
+  /* Card-level confidence pill */
+  .conf-pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    font-family: 'DM Mono', monospace; font-size: 10px;
+    border-radius: 4px; padding: 2px 7px; margin-top: 5px;
+  }
+  .conf-pill.high   { background: rgba(38,196,133,0.15); color: var(--green); border: 1px solid rgba(38,196,133,0.3); }
+  .conf-pill.medium { background: rgba(240,165,0,0.12);  color: #f0a500;      border: 1px solid rgba(240,165,0,0.3); }
+  .conf-pill.low    { background: rgba(248,81,73,0.12);  color: var(--red);   border: 1px solid rgba(248,81,73,0.3); }
+  .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    flex: 1; padding: 9px 14px; border-radius: 8px;
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 600;
+    cursor: pointer; border: none; transition: all 0.15s; white-space: nowrap;
+  }
+  .btn-primary { background: var(--accent); color: #000; }
+  .btn-primary:hover { background: #38c8e8; }
+  .btn-outline { background: transparent; border: 1px solid var(--border); color: var(--text); }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-green { background: var(--green); color: #000; }
+  .btn-green:hover { background: #3de0a0; }
+  .reading-box { margin-top: 10px; background: var(--surface2); border-radius: 8px; padding: 12px 14px; border: 1px solid var(--border); }
+  .reading-label { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .reading-value { display: flex; align-items: baseline; gap: 6px; }
+  .reading-input {
+    background: transparent; border: none; color: var(--accent);
+    font-family: 'DM Mono', monospace; font-size: 26px; font-weight: 500;
+    width: 140px; outline: none; border-bottom: 2px solid var(--border);
+    padding: 2px 0; transition: border-color 0.2s;
+  }
+  .reading-input:focus { border-bottom-color: var(--accent); }
+  .reading-input.serie-input { font-size: 18px; width: 160px; color: #e0a800; }
+  .reading-unit { font-family: 'DM Mono', monospace; font-size: 13px; color: var(--muted); }
+  .reading-status { font-size: 11px; margin-top: 4px; font-family: 'DM Mono', monospace; }
+  .status-ok { color: var(--green); }
+  .status-pending { color: var(--muted); }
+  .status-reading { color: var(--accent); }
+  input[type=file] { display: none; }
+  .table-section { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 24px; margin-bottom: 24px; }
+  .section-title { font-size: 16px; font-weight: 700; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+  .form-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .form-table th {
+    background: var(--surface2); color: var(--accent); font-family: 'DM Mono', monospace;
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+    padding: 10px 12px; text-align: center; border: 1px solid var(--border); white-space: nowrap;
+  }
+  .form-table th:first-child { text-align: left; }
+  .form-table td { border: 1px solid var(--border); padding: 10px 12px; text-align: center; vertical-align: middle; }
+  .form-table td:first-child { font-weight: 600; text-align: left; color: var(--muted); font-size: 12px; font-family: 'DM Mono', monospace; }
+  .table-val { font-family: 'DM Mono', monospace; font-size: 15px; color: var(--text); }
+  .table-val.serie { font-size: 12px; color: #e0a800; }
+  .total-cell { background: rgba(0,180,216,0.08); font-weight: 700; font-size: 16px !important; color: var(--accent) !important; }
+  .meta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+  .meta-field { display: flex; flex-direction: column; gap: 6px; }
+  .meta-field label { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.5px; }
+  .meta-field input {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px;
+    padding: 8px 12px; outline: none; width: 100%; transition: border-color 0.2s;
+  }
+  .meta-field input:focus { border-color: var(--accent); }
+  .actions-row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .actions-row .btn { flex: none; padding: 11px 24px; font-size: 14px; }
+  .spinner {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid rgba(0,0,0,0.3); border-top-color: #000;
+    border-radius: 50%; animation: spin 0.6s linear infinite; vertical-align: middle; margin-right: 6px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .toast {
+    position: fixed; bottom: 24px; right: 24px; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: 10px; padding: 12px 18px;
+    font-size: 13px; color: var(--text); transform: translateY(100px); opacity: 0;
+    transition: all 0.3s; z-index: 999; max-width: 280px;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.success { border-color: var(--green); }
+  .toast.error { border-color: var(--red); }
+  .divider { height: 1px; background: var(--border); margin: 28px 0; }
+  .nr-pers-row { display: flex; align-items: center; gap: 8px; }
+  .nr-btn {
+    width: 28px; height: 28px; border-radius: 6px;
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--text); font-size: 16px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center; transition: all 0.15s;
+  }
+  .nr-btn:hover { border-color: var(--accent); color: var(--accent); }
+  #nrPers {
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text); font-family: 'DM Mono', monospace; font-size: 13px;
+    padding: 6px 10px; width: 52px; text-align: center; outline: none;
+  }
+  .meter-card-baia-mica { grid-column: 1 / -1; }
+  @media(max-width: 560px) {
+    .meter-card-baia-mica { grid-column: 1; }
+    .meta-row { grid-template-columns: 1fr; }
+  }
+  .serie-badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(224,168,0,0.1); border: 1px solid rgba(224,168,0,0.25);
+    border-radius: 5px; padding: 2px 7px;
+    font-family: 'DM Mono', monospace; font-size: 11px; color: #e0a800;
+    margin-left: 6px; vertical-align: middle;
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="logo">💧</div>
+    <div class="header-text">
+      <h1>Citire Contoare Apă</h1>
+      <p>RIPENSIA 21 · Apă Rece</p>
+      <span class="badge">AI-Powered · Index + Serie</span>
+    </div>
+  </header>
+
+  <!-- METADATA -->
+  <div class="table-section">
+    <div class="section-title">📋 Detalii Apartament</div>
+    <div class="meta-row">
+      <div class="meta-field">
+        <label>Apartament nr.</label>
+        <input type="text" id="apNr" placeholder="ex: 12">
+      </div>
+      <div class="meta-field">
+        <label>Proprietar</label>
+        <input type="text" id="proprietar" placeholder="Nume Prenume">
+      </div>
+      <div class="meta-field">
+        <label>Luna consum</label>
+        <input type="text" id="lunaConsum">
+      </div>
+      <div class="meta-field">
+        <label>Nr. persoane</label>
+        <div class="nr-pers-row">
+          <button class="nr-btn" onclick="adjustPers(-1)">−</button>
+          <input type="number" id="nrPers" value="1" min="1" max="20">
+          <button class="nr-btn" onclick="adjustPers(1)">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- METERS -->
+  <div class="meters-grid">
+
+    <!-- BUCATARIE -->
+    <div class="meter-card" id="card-bucatarie">
+      <div class="meter-header">
+        <div class="meter-icon icon-bucatarie">🚰</div>
+        <div>
+          <div class="meter-title">Bucătărie</div>
+          <div class="meter-sub">Contor apă rece</div>
+        </div>
+      </div>
+      <div class="camera-area" id="cam-bucatarie">
+        <div class="placeholder"><div class="icon">📷</div><div>Fă o poză contorului</div></div>
+        <video id="vid-bucatarie" autoplay playsinline></video>
+        <canvas id="canvas-bucatarie"></canvas>
+        <img class="preview" id="prev-bucatarie">
+        <div class="img-overlay" id="overlay-bucatarie">
+          <div class="overlay-index">
+            <input class="overlay-input-idx" id="ov-idx-bucatarie" type="text" placeholder="—" oninput="syncFromOverlay('bucatarie')">
+            <span class="overlay-unit-txt">m³</span>
+          </div>
+          <div class="conf-row">
+            <div class="conf-bar-wrap"><div class="conf-bar" id="conf-bar-idx-bucatarie" style="width:0%"></div></div>
+            <span class="conf-label" id="conf-lbl-idx-bucatarie">—</span>
+          </div>
+          <div class="overlay-serie-row">
+            <span class="overlay-serie-lbl">SERIE:</span>
+            <input class="overlay-input-serie" id="ov-serie-bucatarie" type="text" placeholder="—" oninput="syncFromOverlay('bucatarie')">
+          </div>
+          <div class="conf-row">
+            <div class="conf-bar-wrap"><div class="conf-bar" id="conf-bar-serie-bucatarie" style="width:0%"></div></div>
+            <span class="conf-label" id="conf-lbl-serie-bucatarie">—</span>
+          </div>
+          <div class="overlay-edit-hint">✎ editabil direct</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="openCamera('bucatarie')">📷 Cameră</button>
+        <label class="btn btn-outline" style="display:flex;align-items:center;justify-content:center;cursor:pointer;" for="file-bucatarie">📁 Fișier</label>
+        <input type="file" id="file-bucatarie" accept="image/*" onchange="loadFile(this,'bucatarie')">
+        <button class="btn btn-outline" id="retry-bucatarie" style="display:none;" onclick="retryMeter('bucatarie')">↺</button>
+      </div>
+      <div class="reading-box">
+        <div class="reading-label">Serie contor</div>
+        <div class="reading-value">
+          <input class="reading-input serie-input" type="text" id="serie-bucatarie" placeholder="—" oninput="updateTable()">
+        </div>
+      </div>
+      <div class="reading-box">
+        <div class="reading-label">Index curent</div>
+        <div class="reading-value">
+          <input class="reading-input" type="text" id="val-bucatarie" placeholder="00000" oninput="updateTable()">
+          <span class="reading-unit">m³</span>
+        </div>
+        <div class="reading-status status-pending" id="status-bucatarie">Așteaptă poză…</div>
+        <div id="conf-pill-bucatarie"></div>
+      <div class="reading-box">
+        <div class="reading-label">Index vechi</div>
+        <div class="reading-value">
+          <input class="reading-input" type="text" id="old-bucatarie" placeholder="00000" oninput="updateTable()">
+          <span class="reading-unit">m³</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BAIA MARE -->
+    <div class="meter-card" id="card-baia-mare">
+      <div class="meter-header">
+        <div class="meter-icon icon-baia-mare">🛁</div>
+        <div>
+          <div class="meter-title">Baie Mare</div>
+          <div class="meter-sub">Contor apă rece</div>
+        </div>
+      </div>
+      <div class="camera-area" id="cam-baia-mare">
+        <div class="placeholder"><div class="icon">📷</div><div>Fă o poză contorului</div></div>
+        <video id="vid-baia-mare" autoplay playsinline></video>
+        <canvas id="canvas-baia-mare"></canvas>
+        <img class="preview" id="prev-baia-mare">
+        <div class="img-overlay" id="overlay-baia-mare">
+          <div class="overlay-index">
+            <input class="overlay-input-idx" id="ov-idx-baia-mare" type="text" placeholder="—" oninput="syncFromOverlay('baia-mare')">
+            <span class="overlay-unit-txt">m³</span>
+          </div>
+          <div class="conf-row">
+            <div class="conf-bar-wrap"><div class="conf-bar" id="conf-bar-idx-baia-mare" style="width:0%"></div></div>
+            <span class="conf-label" id="conf-lbl-idx-baia-mare">—</span>
+          </div>
+          <div class="overlay-serie-row">
+            <span class="overlay-serie-lbl">SERIE:</span>
+            <input class="overlay-input-serie" id="ov-serie-baia-mare" type="text" placeholder="—" oninput="syncFromOverlay('baia-mare')">
+          </div>
+          <div class="conf-row">
+            <div class="conf-bar-wrap"><div class="conf-bar" id="conf-bar-serie-baia-mare" style="width:0%"></div></div>
+            <span class="conf-label" id="conf-lbl-serie-baia-mare">—</span>
+          </div>
+          <div class="overlay-edit-hint">✎ editabil direct</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="openCamera('baia-mare')">📷 Cameră</button>
+        <label class="btn btn-outline" style="display:flex;align-items:center;justify-content:center;cursor:pointer;" for="file-baia-mare">📁 Fișier</label>
+        <input type="file" id="file-baia-mare" accept="image/*" onchange="loadFile(this,'baia-mare')">
+        <button class="btn btn-outline" id="retry-baia-mare" style="display:none;" onclick="retryMeter('baia-mare')">↺</button>
+      </div>
+      <div class="reading-box">
+        <div class="reading-label">Serie contor</div>
+        <div class="reading-value">
+          <input class="reading-input serie-input" type="text" id="serie-baia-mare" placeholder="—" oninput="updateTable()">
+        </div>
+      </div>
+      <div class="reading-box">
+        <div class="reading-label">Index curent</div>
+        <div class="reading-value">
+          <input class="reading-input" type="text" id="val-baia-mare" placeholder="00000" oninput="updateTable()">
+          <span class="reading-unit">m³</span>
+        </div>
+        <div class="reading-status status-pending" id="status-baia-mare">Așteaptă poză…</div>
+        <div id="conf-pill-baia-mare"></div>
+      <div class="reading-box">
+        <div class="reading-label">Index vechi</div>
+        <div class="reading-value">
+          <input class="reading-input" type="text" id="old-baia-mare" placeholder="00000" oninput="updateTable()">
+          <span class="reading-unit">m³</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- BAIA MICA -->
+    <div class="meter-card meter-card-baia-mica" id="card-baia-mica">
+      <div class="meter-header">
+        <div class="meter-icon icon-baia-mica">🚿</div>
+        <div>
+          <div class="meter-title">Baie Mică</div>
+          <div class="meter-sub">Contor apă rece (opțional)</div>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div>
+          <div class="camera-area" id="cam-baia-mica">
+            <div class="placeholder"><div class="icon">📷</div><div>Fă o poză contorului</div></div>
+            <video id="vid-baia-mica" autoplay playsinline></video>
+            <canvas id="canvas-baia-mica"></canvas>
+            <img class="preview" id="prev-baia-mica">
+            <div class="img-overlay" id="overlay-baia-mica">
+              <div class="overlay-index">
+                <input class="overlay-input-idx" id="ov-idx-baia-mica" type="text" placeholder="—" oninput="syncFromOverlay('baia-mica')">
+                <span class="overlay-unit-txt">m³</span>
+              </div>
+              <div class="conf-row">
+                <div class="conf-bar-wrap"><div class="conf-bar" id="conf-bar-idx-baia-mica" style="width:0%"></div></div>
+                <span class="conf-label" id="conf-lbl-idx-baia-mica">—</span>
+              </div>
+              <div class="overlay-serie-row">
+                <span class="overlay-serie-lbl">SERIE:</span>
+                <input class="overlay-input-serie" id="ov-serie-baia-mica" type="text" placeholder="—" oninput="syncFromOverlay('baia-mica')">
+              </div>
+              <div class="conf-row">
+                <div class="conf-bar-wrap"><div class="conf-bar" id="conf-bar-serie-baia-mica" style="width:0%"></div></div>
+                <span class="conf-label" id="conf-lbl-serie-baia-mica">—</span>
+              </div>
+              <div class="overlay-edit-hint">✎ editabil direct</div>
+            </div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" onclick="openCamera('baia-mica')">📷 Cameră</button>
+            <label class="btn btn-outline" style="display:flex;align-items:center;justify-content:center;cursor:pointer;" for="file-baia-mica">📁 Fișier</label>
+            <input type="file" id="file-baia-mica" accept="image/*" onchange="loadFile(this,'baia-mica')">
+            <button class="btn btn-outline" id="retry-baia-mica" style="display:none;" onclick="retryMeter('baia-mica')">↺</button>
+          </div>
+        </div>
+        <div>
+          <div class="reading-box" style="margin-bottom:8px;">
+            <div class="reading-label">Serie contor</div>
+            <div class="reading-value">
+              <input class="reading-input serie-input" type="text" id="serie-baia-mica" placeholder="—" oninput="updateTable()">
+            </div>
+          </div>
+          <div class="reading-box" style="margin-bottom:8px;">
+            <div class="reading-label">Index curent</div>
+            <div class="reading-value">
+              <input class="reading-input" type="text" id="val-baia-mica" placeholder="00000" oninput="updateTable()">
+              <span class="reading-unit">m³</span>
+            </div>
+            <div class="reading-status status-pending" id="status-baia-mica">Așteaptă poză…</div>
+            <div id="conf-pill-baia-mica"></div>
+          <div class="reading-box">
+            <div class="reading-label">Index vechi</div>
+            <div class="reading-value">
+              <input class="reading-input" type="text" id="old-baia-mica" placeholder="00000" oninput="updateTable()">
+              <span class="reading-unit">m³</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TABLE -->
+  <div class="table-section">
+    <div class="section-title">📊 Tabel Consum — APA RECE</div>
+    <table class="form-table">
+      <thead>
+        <tr>
+          <th>APA RECE</th>
+          <th>BUCĂTĂRIE</th>
+          <th>BAIE MARE</th>
+          <th>BAIE MICĂ</th>
+          <th>TOTAL CONSUM (mc)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>SERIE CONTOR</td>
+          <td><span class="table-val serie" id="tbl-serie-buc">—</span></td>
+          <td><span class="table-val serie" id="tbl-serie-bm">—</span></td>
+          <td><span class="table-val serie" id="tbl-serie-bmic">—</span></td>
+          <td rowspan="4" style="vertical-align:middle;"><span class="table-val total-cell" id="tbl-total">—</span></td>
+        </tr>
+        <tr>
+          <td>INDEX CURENT</td>
+          <td><span class="table-val" id="tbl-cur-buc">—</span></td>
+          <td><span class="table-val" id="tbl-cur-bm">—</span></td>
+          <td><span class="table-val" id="tbl-cur-bmic">—</span></td>
+        </tr>
+        <tr>
+          <td>INDEX VECHI</td>
+          <td><span class="table-val" id="tbl-old-buc">—</span></td>
+          <td><span class="table-val" id="tbl-old-bm">—</span></td>
+          <td><span class="table-val" id="tbl-old-bmic">—</span></td>
+        </tr>
+        <tr>
+          <td>CONSUM</td>
+          <td><span class="table-val" id="tbl-cons-buc">—</span></td>
+          <td><span class="table-val" id="tbl-cons-bm">—</span></td>
+          <td><span class="table-val" id="tbl-cons-bmic">—</span></td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="divider"></div>
+    <div class="actions-row">
+      <button class="btn btn-green" onclick="downloadCSV()">⬇ Descarcă CSV</button>
+      <button class="btn btn-outline" onclick="resetAll()">↺ Resetează</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const meters = ['bucatarie', 'baia-mare', 'baia-mica'];
+const streams = {};
+const capturedImages = {};
+
+(function() {
+  const now = new Date();
+  const months = ['Ianuarie','Februarie','Martie','Aprilie','Mai','Iunie',
+                  'Iulie','August','Septembrie','Octombrie','Noiembrie','Decembrie'];
+  document.getElementById('lunaConsum').value = months[now.getMonth()] + ' ' + now.getFullYear();
+})();
+
+async function openCamera(meter) {
+  const card = document.getElementById('card-' + meter);
+  const vid = document.getElementById('vid-' + meter);
+  const camArea = document.getElementById('cam-' + meter);
+  card.classList.add('active');
+  if (streams[meter]) streams[meter].getTracks().forEach(t => t.stop());
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } }
+    });
+    streams[meter] = stream;
+    vid.srcObject = stream;
+    vid.style.display = 'block';
+    camArea.querySelector('.placeholder').style.display = 'none';
+    const btnRow = camArea.nextElementSibling;
+    if (!document.getElementById('capture-btn-' + meter)) {
+      const capBtn = document.createElement('button');
+      capBtn.className = 'btn btn-green';
+      capBtn.id = 'capture-btn-' + meter;
+      capBtn.innerHTML = '⬤ Fotografiază';
+      capBtn.onclick = () => capturePhoto(meter);
+      btnRow.insertBefore(capBtn, btnRow.firstChild);
+    }
+    showToast('Cameră pornită. Centrează contorul.', 'success');
+  } catch(e) {
+    showToast('Nu s-a putut accesa camera. Folosiți butonul 📁 Fișier.', 'error');
+  }
+}
+
+function capturePhoto(meter) {
+  const vid = document.getElementById('vid-' + meter);
+  const canvas = document.getElementById('canvas-' + meter);
+  canvas.width = vid.videoWidth || 640;
+  canvas.height = vid.videoHeight || 480;
+  canvas.getContext('2d').drawImage(vid, 0, 0);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+  if (streams[meter]) streams[meter].getTracks().forEach(t => t.stop());
+  vid.style.display = 'none';
+  showPreview(meter, dataUrl);
+  analyzeImage(meter, dataUrl);
+  const cb = document.getElementById('capture-btn-' + meter);
+  if (cb) cb.remove();
+}
+
+function loadFile(input, meter) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => { showPreview(meter, e.target.result); analyzeImage(meter, e.target.result); };
+  reader.readAsDataURL(file);
+}
+
+function showPreview(meter, dataUrl) {
+  capturedImages[meter] = dataUrl;
+  const prev = document.getElementById('prev-' + meter);
+  prev.src = dataUrl;
+  prev.style.display = 'block';
+  document.getElementById('cam-' + meter).querySelector('.placeholder').style.display = 'none';
+  document.getElementById('retry-' + meter).style.display = 'flex';
+  // Show overlay with loading placeholder
+  const overlay = document.getElementById('overlay-' + meter);
+  if (overlay) {
+    overlay.classList.add('visible');
+    document.getElementById('ov-idx-'   + meter).value = '…';
+    document.getElementById('ov-serie-' + meter).value = '…';
+    document.getElementById('ov-idx-'   + meter).classList.remove('err');
+    document.getElementById('ov-serie-' + meter).classList.remove('err');
+  }
+}
+
+function retryMeter(meter) {
+  const prev = document.getElementById('prev-' + meter);
+  prev.style.display = 'none'; prev.src = '';
+  document.getElementById('cam-' + meter).querySelector('.placeholder').style.display = 'flex';
+  document.getElementById('retry-' + meter).style.display = 'none';
+  document.getElementById('val-' + meter).value = '';
+  document.getElementById('serie-' + meter).value = '';
+  document.getElementById('status-' + meter).textContent = 'Așteaptă poză…';
+  document.getElementById('status-' + meter).className = 'reading-status status-pending';
+  document.getElementById('card-' + meter).classList.remove('active', 'done');
+  // Clear confidence pill
+  const pill = document.getElementById('conf-pill-' + meter);
+  if (pill) pill.innerHTML = '';
+  // Hide + clear overlay
+  const overlay = document.getElementById('overlay-' + meter);
+  if (overlay) {
+    overlay.classList.remove('visible');
+    document.getElementById('ov-idx-'   + meter).value = '';
+    document.getElementById('ov-serie-' + meter).value = '';
+    setConfBar(meter, 'idx',   0);
+    setConfBar(meter, 'serie', 0);
+  }
+  delete capturedImages[meter];
+  updateTable();
+}
+
+async function analyzeImage(meter, dataUrl) {
+  const statusEl = document.getElementById('status-' + meter);
+  const valInput = document.getElementById('val-' + meter);
+  const serieInput = document.getElementById('serie-' + meter);
+  const card = document.getElementById('card-' + meter);
+
+  statusEl.innerHTML = '<span class="spinner"></span>AI citește index și serie…';
+  statusEl.className = 'reading-status status-reading';
+
+  const base64 = dataUrl.split(',')[1];
+  const mediaType = dataUrl.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 200,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            { type: 'text', text: `Ești expert în citirea contoarelor de apă. Analizează imaginea și extrage:
+1. INDEX: valoarea afișată pe ecranul digital/numeric principal în m³ — EXACT 5 cifre (ex: "00557"). Dacă sunt mai puține cifre, adaugă zerouri la stânga.
+2. SERIE: numărul de serie al contorului, de obicei 8 cifre imprimate pe cadran sub ecran (ex: "20283670"). EXACT 8 cifre.
+3. CONF_INDEX: scor de confidențialitate 0-100 pentru citirea indexului (cât de sigur ești că e corect)
+4. CONF_SERIE: scor de confidențialitate 0-100 pentru citirea seriei
+
+Returnează DOAR JSON valid fără backticks sau text suplimentar:
+{"index":"00557","serie":"20283670","conf_index":95,"conf_serie":88}
+
+Dacă nu poți citi o valoare cu certitudine, pune "NECLAR" și scorul 0.` }
+          ]
+        }]
+      })
+    });
+
+    const data = await response.json();
+    let text = (data.content?.[0]?.text || '').trim();
+    // strip possible markdown fences
+    text = text.replace(/```json|```/g, '').trim();
+
+    let parsed;
+    try { parsed = JSON.parse(text); } catch(e) { parsed = null; }
+
+    if (!parsed) {
+      statusEl.textContent = '⚠ Răspuns AI neașteptat. Introduceți manual.';
+      statusEl.className = 'reading-status status-pending';
+      updateOverlay(meter, '?', '?', 0, 0);
+      showToast('Verificați imaginea și completați manual.', 'error');
+      return;
+    }
+
+    let msgs = [];
+    let idxOk = false, serieOk = false;
+    let confIdx = parseInt(parsed.conf_index) || 0;
+    let confSerie = parseInt(parsed.conf_serie) || 0;
+
+    // ── Index: normalize to 5 digits ──────────────────────────────────────
+    if (parsed.index && parsed.index !== 'NECLAR') {
+      let rawIdx = parsed.index.replace(/[^\d]/g, '');
+      // Pad left to 5 digits, truncate if longer (keep rightmost 5)
+      if (rawIdx.length < 5) rawIdx = rawIdx.padStart(5, '0');
+      if (rawIdx.length > 5) rawIdx = rawIdx.slice(-5);
+      valInput.value = rawIdx;
+      idxOk = true;
+      msgs.push('index: ' + rawIdx + ' m³');
+    } else {
+      confIdx = 0;
+      msgs.push('index neclar');
+    }
+
+    // ── Serie: normalize to 8 digits ──────────────────────────────────────
+    if (parsed.serie && parsed.serie !== 'NECLAR') {
+      let rawSerie = parsed.serie.replace(/[^\d]/g, '');
+      if (rawSerie.length < 8) rawSerie = rawSerie.padStart(8, '0');
+      if (rawSerie.length > 8) rawSerie = rawSerie.slice(-8);
+      serieInput.value = rawSerie;
+      serieOk = true;
+      msgs.push('serie: ' + rawSerie);
+    } else {
+      confSerie = 0;
+      msgs.push('serie necitită');
+    }
+
+    // ── Status + pill ──────────────────────────────────────────────────────
+    const allOk = idxOk && serieOk;
+    const avgConf = allOk ? Math.round((confIdx + confSerie) / 2) : Math.max(confIdx, confSerie);
+    statusEl.textContent = (allOk ? '✓ ' : '⚠ ') + msgs.join(' · ');
+    statusEl.className = 'reading-status ' + (allOk ? 'status-ok' : 'status-pending');
+    if (allOk) { card.classList.remove('active'); card.classList.add('done'); }
+
+    updateOverlay(meter, valInput.value || '?', serieInput.value || '?', confIdx, confSerie);
+    renderConfPill(meter, avgConf, allOk);
+    updateTable();
+    showToast(meterLabel(meter) + ': ' + msgs.join(', '), allOk ? 'success' : '');
+
+  } catch(e) {
+    statusEl.textContent = '⚠ Eroare API. Introduceți manual.';
+    statusEl.className = 'reading-status status-pending';
+    updateOverlay(meter, '?', '?', 0, 0);
+    showToast('Eroare la AI. Introduceți valorile manual.', 'error');
+    console.error(e);
+  }
+}
+
+function meterLabel(m) {
+  return { 'bucatarie': 'Bucătărie', 'baia-mare': 'Baie Mare', 'baia-mica': 'Baie Mică' }[m] || m;
+}
+
+// AI result → populate overlay inputs + confidence bars
+function updateOverlay(meter, index, serie, confIdx, confSerie) {
+  const idxOvEl   = document.getElementById('ov-idx-'   + meter);
+  const serieOvEl = document.getElementById('ov-serie-' + meter);
+  if (!idxOvEl) return;
+
+  const isIdxBad   = !index || index === '?';
+  const isSerieBad = !serie || serie === '?';
+
+  idxOvEl.value   = isIdxBad   ? '' : index;
+  serieOvEl.value = isSerieBad ? '' : serie;
+
+  idxOvEl.classList.toggle('err',  isIdxBad   || confIdx   < 60);
+  idxOvEl.classList.toggle('warn', !isIdxBad  && confIdx   >= 60 && confIdx   < 85);
+  serieOvEl.classList.toggle('err',  isSerieBad || confSerie < 60);
+  serieOvEl.classList.toggle('warn', !isSerieBad && confSerie >= 60 && confSerie < 85);
+
+  // Confidence bars
+  setConfBar(meter, 'idx',   confIdx);
+  setConfBar(meter, 'serie', confSerie);
+
+  // Sync to card inputs below
+  if (!isIdxBad)   document.getElementById('val-'   + meter).value = index;
+  if (!isSerieBad) document.getElementById('serie-' + meter).value = serie;
+  updateTable();
+}
+
+function setConfBar(meter, field, score) {
+  const bar = document.getElementById('conf-bar-' + field + '-' + meter);
+  const lbl = document.getElementById('conf-lbl-' + field + '-' + meter);
+  if (!bar) return;
+  const pct = Math.max(0, Math.min(100, score));
+  bar.style.width = pct + '%';
+  bar.style.background = pct >= 85 ? 'var(--green)' : pct >= 60 ? '#f0a500' : 'var(--red)';
+  lbl.textContent = pct + '%';
+  lbl.style.color = pct >= 85 ? 'rgba(38,196,133,0.8)' : pct >= 60 ? 'rgba(240,165,0,0.8)' : 'rgba(248,81,73,0.8)';
+}
+
+function renderConfPill(meter, avgConf, allOk) {
+  const el = document.getElementById('conf-pill-' + meter);
+  if (!el) return;
+  const tier  = avgConf >= 85 ? 'high' : avgConf >= 60 ? 'medium' : 'low';
+  const icon  = avgConf >= 85 ? '✓' : avgConf >= 60 ? '⚠' : '✗';
+  const label = avgConf >= 85 ? 'Confidență ridicată' : avgConf >= 60 ? 'Verificați valorile' : 'Confidență scăzută';
+  el.innerHTML = `<span class="conf-pill ${tier}">${icon} ${label} · ${avgConf}%</span>`;
+}
+
+// User edits overlay → sync to card inputs below + update table
+function syncFromOverlay(meter) {
+  const idxVal   = document.getElementById('ov-idx-'   + meter).value;
+  const serieVal = document.getElementById('ov-serie-' + meter).value;
+  document.getElementById('val-'   + meter).value = idxVal;
+  document.getElementById('serie-' + meter).value = serieVal;
+  updateTable();
+}
+
+function updateTable() {
+  const serie = id => document.getElementById('serie-' + id).value || '—';
+  const val   = id => parseFloat(document.getElementById('val-' + id).value) || null;
+  const old   = id => parseFloat(document.getElementById('old-' + id).value) || null;
+  const fmt   = v => v !== null ? v.toFixed(3) : '—';
+  const diff  = (c, o) => (c !== null && o !== null) ? (c - o).toFixed(3) : '—';
+
+  document.getElementById('tbl-serie-buc').textContent  = serie('bucatarie');
+  document.getElementById('tbl-serie-bm').textContent   = serie('baia-mare');
+  document.getElementById('tbl-serie-bmic').textContent = serie('baia-mica');
+
+  document.getElementById('tbl-cur-buc').textContent  = fmt(val('bucatarie'));
+  document.getElementById('tbl-cur-bm').textContent   = fmt(val('baia-mare'));
+  document.getElementById('tbl-cur-bmic').textContent = fmt(val('baia-mica'));
+
+  document.getElementById('tbl-old-buc').textContent  = fmt(old('bucatarie'));
+  document.getElementById('tbl-old-bm').textContent   = fmt(old('baia-mare'));
+  document.getElementById('tbl-old-bmic').textContent = fmt(old('baia-mica'));
+
+  document.getElementById('tbl-cons-buc').textContent  = diff(val('bucatarie'), old('bucatarie'));
+  document.getElementById('tbl-cons-bm').textContent   = diff(val('baia-mare'),  old('baia-mare'));
+  document.getElementById('tbl-cons-bmic').textContent = diff(val('baia-mica'),  old('baia-mica'));
+
+  let total = 0, hasAny = false;
+  [['bucatarie'],['baia-mare'],['baia-mica']].forEach(([m]) => {
+    const c = val(m), o = old(m);
+    if (c !== null && o !== null) { total += (c - o); hasAny = true; }
+  });
+  document.getElementById('tbl-total').textContent = hasAny ? total.toFixed(3) : '—';
+}
+
+function downloadCSV() {
+  const ap   = document.getElementById('apNr').value || '—';
+  const prop = document.getElementById('proprietar').value || '—';
+  const luna = document.getElementById('lunaConsum').value || '—';
+  const nrp  = document.getElementById('nrPers').value || '—';
+
+  const g = id => document.getElementById(id).value || '';
+  const serie_buc  = g('serie-bucatarie');
+  const serie_bm   = g('serie-baia-mare');
+  const serie_bmic = g('serie-baia-mica');
+  const buc  = g('val-bucatarie');
+  const bm   = g('val-baia-mare');
+  const bmic = g('val-baia-mica');
+  const obuc = g('old-bucatarie');
+  const obm  = g('old-baia-mare');
+  const obmic= g('old-baia-mica');
+
+  const cons = (c, o) => (c && o) ? (parseFloat(c) - parseFloat(o)).toFixed(3) : '';
+  const cbuc = cons(buc,obuc), cbm = cons(bm,obm), cbmic = cons(bmic,obmic);
+  let total = 0;
+  [cbuc, cbm, cbmic].forEach(v => { if(v) total += parseFloat(v); });
+  const totalStr = (cbuc || cbm || cbmic) ? total.toFixed(3) : '';
+
+  // escape double-quotes inside cell values
+  const esc = v => String(v).replace(/"/g, '""');
+
+  const rows = [
+    ['RIPENSIA 21', 'AP.', ap, 'Proprietar', prop],
+    ['CONSUM luna', luna, '', 'Nr. pers.', nrp],
+    [],
+    ['APA RECE', 'BUCATARIE', 'BAIA MARE', 'BAIA MICA', 'TOTAL CONSUM mc'],
+    ['SERIE CONTOR', serie_buc,  serie_bm,  serie_bmic,  ''],
+    ['INDEX CURENT', buc,  bm,  bmic,  ''],
+    ['INDEX VECHI',  obuc, obm, obmic, ''],
+    ['CONSUM',       cbuc, cbm, cbmic, totalStr],
+  ];
+
+  const csv = rows.map(r => r.map(c => `"${esc(c)}"`).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `contor_apa_${luna.replace(/ /g,'_')}_ap${ap}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  showToast('CSV descărcat cu succes!', 'success');
+}
+
+function adjustPers(delta) {
+  const inp = document.getElementById('nrPers');
+  inp.value = Math.max(1, parseInt(inp.value || 1) + delta);
+}
+
+function resetAll() {
+  meters.forEach(m => retryMeter(m));
+  document.getElementById('apNr').value = '';
+  document.getElementById('proprietar').value = '';
+  document.getElementById('nrPers').value = '1';
+  meters.forEach(m => { document.getElementById('old-' + m).value = ''; });
+  updateTable();
+  showToast('Formular resetat.', '');
+}
+
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => { t.className = 'toast'; }, 3500);
+}
+</script>
+</body>
+</html>
