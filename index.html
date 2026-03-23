@@ -1288,53 +1288,71 @@ function adjustPers(delta) {
 }
 
 function shareWhatsApp() {
-  const ap   = document.getElementById('apNr').value.trim()       || '—';
-  const prop = document.getElementById('proprietar').value.trim() || '—';
-  const luna = document.getElementById('lunaConsum').value.trim() || '—';
-  const nrp  = document.getElementById('nrPers').value            || '—';
+  const ap   = document.getElementById('apNr').value.trim()       || '\u2014';
+  const prop = document.getElementById('proprietar').value.trim() || '\u2014';
+  const luna = document.getElementById('lunaConsum').value.trim() || '\u2014';
+  const nrp  = document.getElementById('nrPers').value            || '\u2014';
 
-  const g  = id => document.getElementById(id).value.trim() || '';
+  const g = id => document.getElementById(id).value.trim() || '';
   const buc  = g('val-bucatarie');  const obuc  = g('old-bucatarie');  const sbuc  = g('serie-bucatarie');
   const bm   = g('val-baia-mare');  const obm   = g('old-baia-mare');  const sbm   = g('serie-baia-mare');
   const bmic = g('val-baia-mica');  const obmic = g('old-baia-mica');  const sbmic = g('serie-baia-mica');
 
-  const cons = (c, o) => (c && o) ? (parseFloat(c) - parseFloat(o)).toFixed(3) + ' m\u00B3' : '—';
-  const cbuc  = cons(buc,  obuc);
-  const cbm   = cons(bm,   obm);
-  const cbmic = cons(bmic, obmic);
+  const subN = (c, o) => (c && o) ? parseFloat(c) - parseFloat(o) : null;
+  const cbuc  = subN(buc,  obuc);
+  const cbm   = subN(bm,   obm);
+  const cbmic = subN(bmic, obmic);
+  let total = null;
+  [cbuc, cbm, cbmic].forEach(v => { if (v !== null) total = (total || 0) + v; });
+  const fmtV = v => v !== null ? v.toFixed(3) : '\u2014';
 
-  let total = 0, hasTotal = false;
-  [[buc,obuc],[bm,obm],[bmic,obmic]].forEach(([c,o]) => {
-    if (c && o) { total += parseFloat(c) - parseFloat(o); hasTotal = true; }
-  });
-  const totalStr = hasTotal ? total.toFixed(3) + ' m\u00B3' : '—';
+  // Triple-backtick = monospace code block in WhatsApp -> columns stay aligned
+  const L   = (s, n) => String(s ?? '').padEnd(n);
+  const R   = (s, n) => String(s ?? '').padStart(n);
+  const SEP = '\u2500'.repeat(11) + '\u253C' +
+              '\u2500'.repeat(9)  + '\u253C' +
+              '\u2500'.repeat(7)  + '\u253C' +
+              '\u2500'.repeat(7)  + '\u253C' +
+              '\u2500'.repeat(7);
+  const HDR = L('Contor', 11) + '\u2502' +
+              R('Serie',  9)  + '\u2502' +
+              R('Curent', 7)  + '\u2502' +
+              R('Vechi',  7)  + '\u2502' +
+              R('Consum', 7);
+  const dataRow = (name, serie, cur, old, cons) =>
+    L(name, 11)             + '\u2502' +
+    R(serie || '\u2014', 9) + '\u2502' +
+    R(cur   || '\u2014', 7) + '\u2502' +
+    R(old   || '\u2014', 7) + '\u2502' +
+    R(fmtV(cons), 7);
+  const TOTAL_ROW =
+    L('', 11) + '\u2502' + R('', 9) + '\u2502' + R('', 7) + '\u2502' +
+    R('TOTAL', 7) + '\u2502' + R(fmtV(total), 7);
 
-  const line = (label, val) => label + ': ' + val;
-  const mLine = (icon, name, serie, cur, old, diff) =>
-    icon + ' ' + name + '\n' +
-    (serie ? '   Serie: ' + serie + '\n' : '') +
-    '   Curent: ' + (cur  || '—') + ' m\u00B3\n' +
-    '   Vechi:  ' + (old  || '—') + ' m\u00B3\n' +
-    '   Consum: ' + diff;
+  const table = [
+    HDR, SEP,
+    dataRow('Bucatarie', sbuc,  buc,  obuc,  cbuc),
+    dataRow('Baie Mare', sbm,   bm,   obm,   cbm),
+    dataRow('Baie Mica', sbmic, bmic, obmic, cbmic),
+    SEP, TOTAL_ROW,
+  ].join('\n');
 
   const msg = [
     '\uD83C\uDFE2 *RIPENSIA 21* \u2013 Ap. ' + ap,
-    '\uD83D\uDC64 ' + prop + '  \u2022  \uD83D\uDCC5 ' + luna + '  \u2022  \uD83D\uDC65 ' + nrp + (nrp !== '1' ? ' pers.' : ' pers.'),
+    '\uD83D\uDC64 ' + prop + '  \u2022  \uD83D\uDCC5 ' + luna + '  \u2022  \uD83D\uDC65 ' + nrp + ' pers.',
     '',
-    '\uD83D\uDCA7 *APA RECE*',
-    '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
-    mLine('\uD83D\uDEB0', 'Buc\u0103t\u0103rie', sbuc,  buc,  obuc,  cbuc),
-    mLine('\uD83D\uDEC1', 'Baie Mare',     sbm,   bm,   obm,   cbm),
-    mLine('\uD83D\uDEBF', 'Baie Mic\u0103', sbmic, bmic, obmic, cbmic),
-    '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
-    '\uD83D\uDCCA *TOTAL CONSUM: ' + totalStr + '*',
+    '\uD83D\uDCA7 *APA RECE (m\u00B3)*',
+    '```',
+    table,
+    '```',
+    '',
+    '\uD83D\uDCCA *TOTAL CONSUM: ' + fmtV(total) + ' m\u00B3*',
   ].join('\n');
 
   const url = 'https://wa.me/?text=' + encodeURIComponent(msg);
   window.open(url, '_blank', 'noopener,noreferrer');
-  showToast('Se deschide WhatsApp…', 'success');
+  showToast('Se deschide WhatsApp\u2026', 'success');
 }
-
 function resetAll() {
   meters.forEach(m => retryMeter(m));
   document.getElementById('apNr').value = '';
