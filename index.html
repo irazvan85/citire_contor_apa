@@ -379,7 +379,7 @@
     <div class="meta-row">
       <div class="meta-field">
         <label>Apartament nr.</label>
-        <input type="text" id="apNr" placeholder="ex: 12">
+        <input type="text" id="apNr" placeholder="ex: 12" onblur="tryAutoFillOldIndex()">
       </div>
       <div class="meta-field">
         <label>Proprietar</label>
@@ -649,6 +649,7 @@
     <div class="divider"></div>
     <div class="actions-row">
       <button class="btn btn-green" onclick="downloadCSV()">⬇ Descarcă CSV</button>
+      <button class="btn btn-primary" onclick="saveReadings()" style="background:var(--accent2);">💾 Salvează Citiri</button>
       <button class="btn btn-outline" onclick="resetAll()">↺ Resetează</button>
     </div>
   </div>
@@ -680,6 +681,7 @@
 const meters = ['bucatarie', 'baia-mare', 'baia-mica'];
 const streams = {};
 const capturedImages = {};
+const HISTORY_KEY = 'contor_apa_v1';
 
 (function() {
   const now = new Date();
@@ -906,124 +908,188 @@ Dacă nu poți citi o valoare cu certitudine, pune "NECLAR" și scorul 0.` }
 }
 
 async function analyzeWithTesseract(meter, dataUrl) {
-  const statusEl = document.getElementById('status-' + meter);
-  const valInput = document.getElementById('val-' + meter);
-  const serieInput = document.getElementById('serie-' + meter);
-  const card = document.getElementById('card-' + meter);
+  const statusEl  = document.getElementById('status-' + meter);
+  const valInput  = document.getElementById('val-'    + meter);
+  const serieInput= document.getElementById('serie-'  + meter);
+  const card      = document.getElementById('card-'   + meter);
 
-  statusEl.innerHTML = '<span class="spinner"></span>OCR local în curs…';
+  statusEl.innerHTML = '<span class="spinner"></span>OCR local – pregătire variante imagine…';
   statusEl.className = 'reading-status status-reading';
 
   try {
-    // Preprocess: scale up + high-contrast grayscale for better OCR on meters
-    const processedUrl = await preprocessImageForOCR(dataUrl);
+    const variants = await _createImageVariants(dataUrl);
+    const psmModes = ['6', '7']; // PSM 6 = uniform block, PSM 7 = single text line
+    statusEl.innerHTML = '<span class="spinner"></span>OCR local – analizez '
+      + (variants.length * psmModes.length) + ' variante…';
 
     const worker = await Tesseract.createWorker('eng');
-    await worker.setParameters({
-      tessedit_char_whitelist: '0123456789',
-      tessedit_pageseg_mode: '6', // PSM 6 = single uniform block of text, best for meter digit areas
-    });
-    const { data: { text } } = await worker.recognize(processedUrl);
+    const results = [];
+    for (const v of variants) {
+      for (const psm of psmModes) {
+        await worker.setParameters({
+          tessedit_char_whitelist: '0123456789',
+          tessedit_pageseg_mode: psm,
+        });
+        const { data } = await worker.recognize(v.url);
+        const cands = _extractOcrCandidates(data.text);
+        results.push({ variant: v.name, psm, conf: data.confidence,
+                       index: cands.index, serie: cands.serie });
+      }
+    }
     await worker.terminate();
 
-    // Extract all digit sequences from OCR output
-    const seqs = (text.match(/\d+/g) || []).filter(s => s.length >= 3);
+    const voted = _voteOcr(results);
+    const nRuns = results.length;
+    let msgs = [], idxOk = false, serieOk = false;
 
-    let index = null;
-    let serie = null;
+    // Confidence: 60% from cross-variant agreement + 40% from Tesseract avg score, capped at 65
+    const confIdx = voted.index
+      ? Math.min(65, Math.round(voted.indexAgreement * 50 + voted.indexAvgConf * 0.3))
+      : 0;
+    const confSerie = voted.serie
+      ? Math.min(65, Math.round(voted.serieAgreement * 50 + voted.serieAvgConf * 0.3))
+      : 0;
 
-    // Prefer exact-length matches first
-    for (const s of seqs) {
-      if (!serie && s.length === 8) { serie = s; continue; }
-      if (!index && s.length === 5) { index = s; continue; }
-    }
-    // Broaden: 7-9 digit sequences → serie; 4-6 digit sequences → index
-    for (const s of seqs) {
-      if (!serie && s.length >= 7 && s.length <= 9) { serie = s.padStart(8, '0').slice(-8); }
-      if (!index && s.length >= 4 && s.length <= 6) { index = s.padStart(5, '0').slice(-5); }
-    }
-    // Last resort: use the combined digit string
-    if (!index || !serie) {
-      const all = seqs.join('');
-      if (!serie && all.length >= 8) { serie = all.slice(0, 8); }
-      if (!index && all.length >= 5) { index = all.slice(-5); }
-    }
-
-    let msgs = [];
-    let idxOk = false, serieOk = false;
-    // 45 = mid-low confidence: Tesseract on meter images is useful but needs user verification,
-    // so we score below the 60% "medium" threshold to keep the warning pill visible.
-    const CONF = 45;
-
-    if (index) {
-      valInput.value = index;
+    if (voted.index) {
+      valInput.value = voted.index;
       idxOk = true;
-      msgs.push('index: ' + index + ' m³');
-    } else {
-      msgs.push('index neclar');
-    }
-    if (serie) {
-      serieInput.value = serie;
-      serieOk = true;
-      msgs.push('serie: ' + serie);
-    } else {
-      msgs.push('serie necitită');
-    }
+      msgs.push('index: ' + voted.index + ' m³ [' + voted.indexVotes + '/' + nRuns + ']');
+    } else { msgs.push('index neclar'); }
 
-    const allOk = idxOk && serieOk;
-    const confIdx   = idxOk   ? CONF : 0;
-    const confSerie = serieOk ? CONF : 0;
-    const avgConf   = allOk ? CONF : Math.max(confIdx, confSerie);
+    if (voted.serie) {
+      serieInput.value = voted.serie;
+      serieOk = true;
+      msgs.push('serie: ' + voted.serie + ' [' + voted.serieVotes + '/' + nRuns + ']');
+    } else { msgs.push('serie necitită'); }
+
+    const allOk   = idxOk && serieOk;
+    const avgConf = allOk ? Math.round((confIdx + confSerie) / 2) : Math.max(confIdx, confSerie);
 
     statusEl.textContent = '🖥 OCR local: ' + msgs.join(' · ');
-    statusEl.className = 'reading-status ' + (allOk ? 'status-ok' : 'status-pending');
+    statusEl.className   = 'reading-status ' + (allOk ? 'status-ok' : 'status-pending');
     if (allOk) { card.classList.remove('active'); card.classList.add('done'); }
 
     updateOverlay(meter, valInput.value || '?', serieInput.value || '?', confIdx, confSerie);
     renderConfPill(meter, avgConf, allOk);
     updateTable();
-    showToast('OCR local ' + meterLabel(meter) + ': ' + (allOk ? 'verificați valorile.' : 'completați manual.'), allOk ? '' : 'error');
+    showToast('OCR local ' + meterLabel(meter) + ': '
+      + (allOk ? 'verificați valorile.' : 'completați manual.'), allOk ? '' : 'error');
 
   } catch(e) {
     statusEl.textContent = '⚠ Eroare OCR local. Introduceți manual.';
-    statusEl.className = 'reading-status status-pending';
+    statusEl.className   = 'reading-status status-pending';
     updateOverlay(meter, '?', '?', 0, 0);
     showToast('OCR local eșuat. Introduceți valorile manual.', 'error');
     console.error(e);
   }
 }
 
-function preprocessImageForOCR(dataUrl) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      // Scale up 2× for better OCR accuracy on small meter displays
-      const scale = 2;
-      const canvas = document.createElement('canvas');
-      canvas.width  = img.width  * scale;
-      canvas.height = img.height * scale;
-      const ctx = canvas.getContext('2d');
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+// ── OCR multi-variant helpers ─────────────────────────────────────────────────
 
-      // Convert to grayscale + boost contrast
-      const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      const d = imgData.data;
-      for (let i = 0; i < d.length; i += 4) {
-        const gray = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
-        // S-curve contrast: pull mid-tones toward black or white
-        const c = gray < 128
-          ? Math.max(0,   gray - (128 - gray) * 0.6)
-          : Math.min(255, gray + (gray - 128) * 0.6);
-        d[i] = d[i + 1] = d[i + 2] = c;
-      }
-      ctx.putImageData(imgData, 0, 0);
-      resolve(canvas.toDataURL('image/png'));
-    };
-    img.onerror = () => resolve(dataUrl); // fall back to original on error
-    img.src = dataUrl;
+function _loadImg(src) {
+  return new Promise((res, rej) => {
+    const img = new Image();
+    img.onload  = () => res(img);
+    img.onerror = rej;
+    img.src = src;
   });
+}
+
+function _applyPixelFn(img, fn) {
+  const scale = 2;
+  const c = document.createElement('canvas');
+  c.width  = img.naturalWidth  * scale;
+  c.height = img.naturalHeight * scale;
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, c.width, c.height);
+  const id = ctx.getImageData(0, 0, c.width, c.height);
+  const d  = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const gray = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+    d[i] = d[i+1] = d[i+2] = fn(gray);
+  }
+  ctx.putImageData(id, 0, 0);
+  return c.toDataURL('image/png');
+}
+
+// Pixel-level preprocessing transforms
+const _pfContrast  = g => g < 128 ? Math.max(0,   g - (128-g)*0.6)
+                                   : Math.min(255, g + (g-128)*0.6);  // S-curve
+const _pfBinarize  = g => g < 128 ? 0 : 255;                          // hard threshold
+const _pfInverted  = g => 255 - _pfContrast(g);                       // inverted S-curve (light digits on dark bg)
+const _pfSharpened = g => g < 128 ? Math.max(0,   g - (128-g)*1.1)   // steeper S-curve
+                                   : Math.min(255, g + (g-128)*1.1);
+
+async function _createImageVariants(dataUrl) {
+  let img;
+  try { img = await _loadImg(dataUrl); }
+  catch(e) { return [{ name: 'original', url: dataUrl }]; }
+  return [
+    { name: 'contrast',  url: _applyPixelFn(img, _pfContrast)  },
+    { name: 'binarize',  url: _applyPixelFn(img, _pfBinarize)  },
+    { name: 'inverted',  url: _applyPixelFn(img, _pfInverted)  },
+    { name: 'sharpened', url: _applyPixelFn(img, _pfSharpened) },
+  ];
+}
+
+function _extractOcrCandidates(text) {
+  const seqs = (text.match(/\d+/g) || []).filter(s => s.length >= 3);
+  let index = null, serie = null;
+  // Exact-length matches first
+  for (const s of seqs) {
+    if (!serie && s.length === 8) { serie = s; continue; }
+    if (!index && s.length === 5) { index = s; continue; }
+  }
+  // Near-length matches as fallback
+  for (const s of seqs) {
+    if (!serie && s.length >= 7 && s.length <= 9) serie = s.padStart(8,'0').slice(-8);
+    if (!index && s.length >= 4 && s.length <= 6) index = s.padStart(5,'0').slice(-5);
+  }
+  // Last resort: combined digit run
+  const all = seqs.join('');
+  if (!serie && all.length >= 8) serie = all.slice(0, 8);
+  if (!index && all.length >= 5) index = all.slice(-5);
+  return { index, serie };
+}
+
+function _voteOcr(results) {
+  const tally = key => {
+    const t = {};
+    for (const r of results) {
+      const v = r[key]; if (!v) continue;
+      if (!t[v]) t[v] = { votes: 0, totalConf: 0 };
+      t[v].votes++;
+      t[v].totalConf += Math.max(0, r.conf); // Tesseract can return -1
+    }
+    return t;
+  };
+  const pick = (t, total) => {
+    const entries = Object.entries(t)
+      .map(([val, d]) => ({
+        val,
+        score:     d.votes * (d.totalConf / d.votes), // votes × avg conf
+        votes:     d.votes,
+        agreement: d.votes / total,
+        avgConf:   d.totalConf / d.votes,
+      }))
+      .sort((a, b) => b.score - a.score);
+    return entries[0] || null;
+  };
+  const n  = results.length;
+  const bi = pick(tally('index'), n);
+  const bs = pick(tally('serie'), n);
+  return {
+    index:          bi ? bi.val       : null,
+    indexVotes:     bi ? bi.votes     : 0,
+    indexAgreement: bi ? bi.agreement : 0,
+    indexAvgConf:   bi ? bi.avgConf   : 0,
+    serie:          bs ? bs.val       : null,
+    serieVotes:     bs ? bs.votes     : 0,
+    serieAgreement: bs ? bs.agreement : 0,
+    serieAvgConf:   bs ? bs.avgConf   : 0,
+  };
 }
 
 // ── API Key management ────────────────────────────────────────────────────────
@@ -1185,8 +1251,9 @@ function downloadCSV() {
   [cbuc, cbm, cbmic].forEach(v => { if(v) total += parseFloat(v); });
   const totalStr = (cbuc || cbm || cbmic) ? total.toFixed(3) : '';
 
-  // escape double-quotes inside cell values
-  const esc = v => String(v).replace(/"/g, '""');
+  // Prevent CSV formula injection (OWASP) and escape double-quotes
+  const csvSafe = v => { const s = String(v); return /^[=+\-@|%`]/.test(s) ? "'" + s : s; };
+  const esc = v => csvSafe(v).replace(/"/g, '""');
 
   const rows = [
     ['RIPENSIA 21', 'AP.', ap, 'Proprietar', prop],
@@ -1225,6 +1292,63 @@ function resetAll() {
   meters.forEach(m => { document.getElementById('old-' + m).value = ''; });
   updateTable();
   showToast('Formular resetat.', '');
+}
+
+// ── Readings history (localStorage) ──────────────────────────────────────────
+
+function saveReadings() {
+  const ap   = document.getElementById('apNr').value.trim();
+  const luna = document.getElementById('lunaConsum').value.trim();
+  const g    = id => document.getElementById(id).value.trim() || '';
+  if (!ap || !luna) {
+    showToast('Completați nr. apartament și luna pentru a salva.', 'error'); return;
+  }
+  const entry = {
+    ap, luna,
+    proprietar: g('proprietar'), nrPers: g('nrPers'),
+    meters: {
+      bucatarie:   { val: g('val-bucatarie'),  serie: g('serie-bucatarie')  },
+      'baia-mare': { val: g('val-baia-mare'),  serie: g('serie-baia-mare')  },
+      'baia-mica': { val: g('val-baia-mica'),  serie: g('serie-baia-mica')  },
+    },
+    savedAt: new Date().toISOString(),
+  };
+  const history = _loadHistory();
+  if (!history[ap]) history[ap] = [];
+  const idx = history[ap].findIndex(e => e.luna === luna);
+  if (idx >= 0) history[ap][idx] = entry; else history[ap].unshift(entry);
+  history[ap] = history[ap].slice(0, 24); // keep last 24 months per apartment
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    showToast('Citiri salvate local pentru ' + luna + '.', 'success');
+  } catch(e) {
+    showToast('Eroare la salvare locală.', 'error');
+  }
+}
+
+function tryAutoFillOldIndex() {
+  const ap = document.getElementById('apNr').value.trim();
+  if (!ap) return;
+  const history = _loadHistory();
+  const entries = history[ap] || [];
+  if (!entries.length) return;
+  const currentLuna = document.getElementById('lunaConsum').value.trim();
+  const prev = entries.find(e => e.luna !== currentLuna);
+  if (!prev) return;
+  let filled = 0;
+  meters.forEach(m => {
+    const mData    = prev.meters && prev.meters[m];
+    const oldInput = document.getElementById('old-'   + m);
+    const serieInp = document.getElementById('serie-' + m);
+    if (oldInput  && mData && mData.val   && !oldInput.value)  { oldInput.value  = mData.val;   filled++; }
+    if (serieInp  && mData && mData.serie && !serieInp.value)  { serieInp.value  = mData.serie; }
+  });
+  if (filled > 0) { updateTable(); showToast('Index vechi precompletat din ' + prev.luna + '.', 'success'); }
+}
+
+function _loadHistory() {
+  try   { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '{}'); }
+  catch(e) { return {}; }
 }
 
 // ── Crop Modal ────────────────────────────────────────────────────────────────
