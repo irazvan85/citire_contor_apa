@@ -176,6 +176,8 @@
   .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
   .btn-green { background: var(--green); color: #000; }
   .btn-green:hover { background: #3de0a0; }
+  .btn-whatsapp { background: #25d366; color: #fff; }
+  .btn-whatsapp:hover { background: #1ebe57; }
   .reading-box { margin-top: 10px; background: var(--surface2); border-radius: 8px; padding: 12px 14px; border: 1px solid var(--border); }
   .reading-label { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
   .reading-value { display: flex; align-items: baseline; gap: 6px; }
@@ -649,6 +651,7 @@
     <div class="divider"></div>
     <div class="actions-row">
       <button class="btn btn-green" onclick="downloadCSV()">⬇ Descarcă CSV</button>
+      <button class="btn btn-whatsapp" onclick="shareWhatsApp()">📲 Trimite WhatsApp</button>
       <button class="btn btn-primary" onclick="saveReadings()" style="background:var(--accent2);">💾 Salvează Citiri</button>
       <button class="btn btn-outline" onclick="resetAll()">↺ Resetează</button>
     </div>
@@ -1282,6 +1285,54 @@ function downloadCSV() {
 function adjustPers(delta) {
   const inp = document.getElementById('nrPers');
   inp.value = Math.max(1, parseInt(inp.value || 1) + delta);
+}
+
+function shareWhatsApp() {
+  const ap   = document.getElementById('apNr').value.trim()       || '—';
+  const prop = document.getElementById('proprietar').value.trim() || '—';
+  const luna = document.getElementById('lunaConsum').value.trim() || '—';
+  const nrp  = document.getElementById('nrPers').value            || '—';
+
+  const g  = id => document.getElementById(id).value.trim() || '';
+  const buc  = g('val-bucatarie');  const obuc  = g('old-bucatarie');  const sbuc  = g('serie-bucatarie');
+  const bm   = g('val-baia-mare');  const obm   = g('old-baia-mare');  const sbm   = g('serie-baia-mare');
+  const bmic = g('val-baia-mica');  const obmic = g('old-baia-mica');  const sbmic = g('serie-baia-mica');
+
+  const cons = (c, o) => (c && o) ? (parseFloat(c) - parseFloat(o)).toFixed(3) + ' m\u00B3' : '—';
+  const cbuc  = cons(buc,  obuc);
+  const cbm   = cons(bm,   obm);
+  const cbmic = cons(bmic, obmic);
+
+  let total = 0, hasTotal = false;
+  [[buc,obuc],[bm,obm],[bmic,obmic]].forEach(([c,o]) => {
+    if (c && o) { total += parseFloat(c) - parseFloat(o); hasTotal = true; }
+  });
+  const totalStr = hasTotal ? total.toFixed(3) + ' m\u00B3' : '—';
+
+  const line = (label, val) => label + ': ' + val;
+  const mLine = (icon, name, serie, cur, old, diff) =>
+    icon + ' ' + name + '\n' +
+    (serie ? '   Serie: ' + serie + '\n' : '') +
+    '   Curent: ' + (cur  || '—') + ' m\u00B3\n' +
+    '   Vechi:  ' + (old  || '—') + ' m\u00B3\n' +
+    '   Consum: ' + diff;
+
+  const msg = [
+    '\uD83C\uDFE2 *RIPENSIA 21* \u2013 Ap. ' + ap,
+    '\uD83D\uDC64 ' + prop + '  \u2022  \uD83D\uDCC5 ' + luna + '  \u2022  \uD83D\uDC65 ' + nrp + (nrp !== '1' ? ' pers.' : ' pers.'),
+    '',
+    '\uD83D\uDCA7 *APA RECE*',
+    '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    mLine('\uD83D\uDEB0', 'Buc\u0103t\u0103rie', sbuc,  buc,  obuc,  cbuc),
+    mLine('\uD83D\uDEC1', 'Baie Mare',     sbm,   bm,   obm,   cbm),
+    mLine('\uD83D\uDEBF', 'Baie Mic\u0103', sbmic, bmic, obmic, cbmic),
+    '\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500',
+    '\uD83D\uDCCA *TOTAL CONSUM: ' + totalStr + '*',
+  ].join('\n');
+
+  const url = 'https://wa.me/?text=' + encodeURIComponent(msg);
+  window.open(url, '_blank', 'noopener,noreferrer');
+  showToast('Se deschide WhatsApp…', 'success');
 }
 
 function resetAll() {
