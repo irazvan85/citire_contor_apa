@@ -566,11 +566,14 @@
       <div class="meta-field">
         <label>Nr. persoane</label>
         <div class="nr-pers-row">
-          <button class="nr-btn" onclick="adjustPers(-1)">−</button>
+          <button class="nr-btn" onclick="adjustPers(-1)" aria-label="Scade nr. persoane">−</button>
           <input type="number" id="nrPers" value="1" min="1" max="20">
-          <button class="nr-btn" onclick="adjustPers(1)">+</button>
+          <button class="nr-btn" onclick="adjustPers(1)" aria-label="Crește nr. persoane">+</button>
         </div>
       </div>
+    </div>
+    <div style="margin-top:12px;">
+      <button class="btn btn-outline" onclick="repeatLastMonth()" style="font-size:12px;padding:7px 16px;min-height:36px;">📋 Repetă luna anterioară</button>
     </div>
   </div>
 
@@ -593,7 +596,7 @@
         <img class="preview" id="prev-bucatarie">
         <div class="img-overlay" id="overlay-bucatarie">
           <div class="overlay-index">
-            <input class="overlay-input-idx" id="ov-idx-bucatarie" type="text" placeholder="—" oninput="syncFromOverlay('bucatarie')">
+            <input class="overlay-input-idx" id="ov-idx-bucatarie" type="text" placeholder="—" aria-label="Index contor bucătărie" oninput="syncFromOverlay('bucatarie')">
             <span class="overlay-unit-txt">m³</span>
           </div>
           <div class="conf-row">
@@ -602,7 +605,7 @@
           </div>
           <div class="overlay-serie-row">
             <span class="overlay-serie-lbl">SERIE:</span>
-            <input class="overlay-input-serie" id="ov-serie-bucatarie" type="text" placeholder="—" oninput="syncFromOverlay('bucatarie')">
+            <input class="overlay-input-serie" id="ov-serie-bucatarie" type="text" placeholder="—" aria-label="Serie contor bucătărie" oninput="syncFromOverlay('bucatarie')">
           </div>
           <div class="conf-row">
             <div class="conf-bar-wrap"><div class="conf-bar" id="conf-bar-serie-bucatarie" style="width:0%"></div></div>
@@ -615,7 +618,7 @@
         <button class="btn btn-primary" onclick="openCamera('bucatarie')">📷 Cameră</button>
         <label class="btn btn-outline" style="display:flex;align-items:center;justify-content:center;cursor:pointer;" for="file-bucatarie">📁 Fișier</label>
         <input type="file" id="file-bucatarie" accept="image/*" onchange="loadFile(this,'bucatarie')">
-        <button class="btn btn-outline" id="retry-bucatarie" style="display:none;" onclick="retryMeter('bucatarie')">↺</button>
+        <button class="btn btn-outline" id="retry-bucatarie" style="display:none;" onclick="retryMeter('bucatarie')" aria-label="Reîncearcă citirea bucătărie">↺</button>
       </div>
       <div class="reading-box">
         <div class="reading-label">Serie contor</div>
@@ -629,7 +632,7 @@
           <input class="reading-input" type="text" id="val-bucatarie" placeholder="00000" oninput="updateTable()">
           <span class="reading-unit">m³</span>
         </div>
-        <div class="reading-status status-pending" id="status-bucatarie">Așteaptă poză…</div>
+        <div class="reading-status status-pending" id="status-bucatarie" aria-live="polite">Așteaptă poză…</div>
         <div id="conf-pill-bucatarie"></div>
       </div>
       <div class="reading-box">
@@ -657,7 +660,7 @@
         <img class="preview" id="prev-baia-mare">
         <div class="img-overlay" id="overlay-baia-mare">
           <div class="overlay-index">
-            <input class="overlay-input-idx" id="ov-idx-baia-mare" type="text" placeholder="—" oninput="syncFromOverlay('baia-mare')">
+            <input class="overlay-input-idx" id="ov-idx-baia-mare" type="text" placeholder="—" aria-label="Index contor baie mare" oninput="syncFromOverlay('baia-mare')">
             <span class="overlay-unit-txt">m³</span>
           </div>
           <div class="conf-row">
@@ -666,7 +669,7 @@
           </div>
           <div class="overlay-serie-row">
             <span class="overlay-serie-lbl">SERIE:</span>
-            <input class="overlay-input-serie" id="ov-serie-baia-mare" type="text" placeholder="—" oninput="syncFromOverlay('baia-mare')">
+            <input class="overlay-input-serie" id="ov-serie-baia-mare" type="text" placeholder="—" aria-label="Serie contor baie mare" oninput="syncFromOverlay('baia-mare')">
           </div>
           <div class="conf-row">
             <div class="conf-bar-wrap"><div class="conf-bar" id="conf-bar-serie-baia-mare" style="width:0%"></div></div>
@@ -679,7 +682,7 @@
         <button class="btn btn-primary" onclick="openCamera('baia-mare')">📷 Cameră</button>
         <label class="btn btn-outline" style="display:flex;align-items:center;justify-content:center;cursor:pointer;" for="file-baia-mare">📁 Fișier</label>
         <input type="file" id="file-baia-mare" accept="image/*" onchange="loadFile(this,'baia-mare')">
-        <button class="btn btn-outline" id="retry-baia-mare" style="display:none;" onclick="retryMeter('baia-mare')">↺</button>
+        <button class="btn btn-outline" id="retry-baia-mare" style="display:none;" onclick="retryMeter('baia-mare')" aria-label="Reîncearcă citirea baie mare">↺</button>
       </div>
       <div class="reading-box">
         <div class="reading-label">Serie contor</div>
@@ -693,7 +696,7 @@
           <input class="reading-input" type="text" id="val-baia-mare" placeholder="00000" oninput="updateTable()">
           <span class="reading-unit">m³</span>
         </div>
-        <div class="reading-status status-pending" id="status-baia-mare">Așteaptă poză…</div>
+        <div class="reading-status status-pending" id="status-baia-mare" aria-live="polite">Așteaptă poză…</div>
         <div id="conf-pill-baia-mare"></div>
       </div>
       <div class="reading-box">
@@ -723,7 +726,7 @@
             <img class="preview" id="prev-baia-mica">
             <div class="img-overlay" id="overlay-baia-mica">
               <div class="overlay-index">
-                <input class="overlay-input-idx" id="ov-idx-baia-mica" type="text" placeholder="—" oninput="syncFromOverlay('baia-mica')">
+                <input class="overlay-input-idx" id="ov-idx-baia-mica" type="text" placeholder="—" aria-label="Index contor baie mică" oninput="syncFromOverlay('baia-mica')">
                 <span class="overlay-unit-txt">m³</span>
               </div>
               <div class="conf-row">
@@ -732,7 +735,7 @@
               </div>
               <div class="overlay-serie-row">
                 <span class="overlay-serie-lbl">SERIE:</span>
-                <input class="overlay-input-serie" id="ov-serie-baia-mica" type="text" placeholder="—" oninput="syncFromOverlay('baia-mica')">
+                <input class="overlay-input-serie" id="ov-serie-baia-mica" type="text" placeholder="—" aria-label="Serie contor baie mică" oninput="syncFromOverlay('baia-mica')">
               </div>
               <div class="conf-row">
                 <div class="conf-bar-wrap"><div class="conf-bar" id="conf-bar-serie-baia-mica" style="width:0%"></div></div>
@@ -745,7 +748,7 @@
             <button class="btn btn-primary" onclick="openCamera('baia-mica')">📷 Cameră</button>
             <label class="btn btn-outline" style="display:flex;align-items:center;justify-content:center;cursor:pointer;" for="file-baia-mica">📁 Fișier</label>
             <input type="file" id="file-baia-mica" accept="image/*" onchange="loadFile(this,'baia-mica')">
-            <button class="btn btn-outline" id="retry-baia-mica" style="display:none;" onclick="retryMeter('baia-mica')">↺</button>
+            <button class="btn btn-outline" id="retry-baia-mica" style="display:none;" onclick="retryMeter('baia-mica')" aria-label="Reîncearcă citirea baie mică">↺</button>
           </div>
         </div>
         <div>
@@ -761,7 +764,7 @@
               <input class="reading-input" type="text" id="val-baia-mica" placeholder="00000" oninput="updateTable()">
               <span class="reading-unit">m³</span>
             </div>
-            <div class="reading-status status-pending" id="status-baia-mica">Așteaptă poză…</div>
+            <div class="reading-status status-pending" id="status-baia-mica" aria-live="polite">Așteaptă poză…</div>
             <div id="conf-pill-baia-mica"></div>
           </div>
           <div class="reading-box">
@@ -868,7 +871,7 @@
 <div class="toast" id="toast"></div>
 
 <!-- CROP MODAL -->
-<div id="crop-modal">
+<div id="crop-modal" role="dialog" aria-modal="true" aria-label="Selectare zonă de interes">
   <div class="crop-modal-inner">
     <div class="crop-modal-title">✂ Selectați zona de interes</div>
     <p class="crop-modal-hint">
@@ -876,9 +879,11 @@
       Dacă săriți acest pas, imaginea completă va fi analizată.
     </p>
     <div class="crop-canvas-wrap">
-      <canvas id="crop-canvas"></canvas>
+      <canvas id="crop-canvas" tabindex="0"></canvas>
     </div>
     <div class="crop-actions">
+      <button class="btn btn-outline" onclick="rotateCropImage(-90)" aria-label="Rotire 90° stânga">↺ 90°</button>
+      <button class="btn btn-outline" onclick="rotateCropImage(90)" aria-label="Rotire 90° dreapta">↻ 90°</button>
       <button class="btn btn-primary" onclick="confirmCrop()">✓ Confirmă selecția</button>
       <button class="btn btn-outline" onclick="useFullImage()">↗ Imaginea completă</button>
       <button class="btn btn-outline crop-actions-close" onclick="closeCropModal()">✕ Anulează</button>
@@ -886,11 +891,28 @@
   </div>
 </div>
 
+<!-- Hidden live region for screen reader announcements -->
+<div id="sr-live" aria-live="assertive" aria-atomic="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden;"></div>
+
 <script>
 const meters = ['bucatarie', 'baia-mare', 'baia-mica'];
 const streams = {};
 const capturedImages = {};
 const HISTORY_KEY = 'contor_apa_v1';
+const _processing = {};       // double-submit guard per meter
+const _abortControllers = {};  // AbortController per meter for API calls
+const _dirty = { flag: false }; // unsaved changes tracker
+const _tessWorkers = {};       // active Tesseract worker per meter (for cancel)
+const API_TIMEOUT_MS = 30000;  // 30s timeout for AI API calls
+const TESS_TIMEOUT_MS = 60000; // 60s timeout for Tesseract OCR
+const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
+
+window.addEventListener('beforeunload', (e) => {
+  // Stop any active camera streams
+  Object.values(streams).forEach(s => { try { s.getTracks().forEach(t => t.stop()); } catch(_){} });
+  // Warn about unsaved changes
+  if (_dirty.flag) { e.preventDefault(); }
+});
 
 (function() {
   const now = new Date();
@@ -945,6 +967,11 @@ function capturePhoto(meter) {
 function loadFile(input, meter) {
   const file = input.files[0];
   if (!file) return;
+  if (file.size > MAX_FILE_SIZE) {
+    showToast('Imaginea e prea mare. Maxim 15 MB.', 'error');
+    input.value = '';
+    return;
+  }
   const reader = new FileReader();
   reader.onload = e => { showCropModal(meter, e.target.result); };
   reader.readAsDataURL(file);
@@ -995,28 +1022,73 @@ function retryMeter(meter) {
 }
 
 async function analyzeImage(meter, dataUrl) {
-  const engine  = _getSelectedEngine();
-  const multi   = document.getElementById('multiEngineCheck')?.checked;
+  if (_processing[meter]) return; // double-submit guard
+  _processing[meter] = true;
+  _setMeterButtonsDisabled(meter, true);
+  _dirty.flag = true;
 
-  if (multi) {
-    await _analyzeMultiEngine(meter, dataUrl);
-    return;
-  }
+  try {
+    const engine  = _getSelectedEngine();
+    const multi   = document.getElementById('multiEngineCheck')?.checked;
 
-  if (engine === 'claude') {
-    const key = localStorage.getItem('anthropicApiKey') || '';
-    if (key) { await analyzeWithClaude(meter, dataUrl, key); return; }
-    showToast('Cheie Claude lipsă – folosesc Tesseract.', '');
-  } else if (engine === 'openai') {
-    const key = localStorage.getItem('openaiApiKey') || '';
-    if (key) { await analyzeWithOpenAI(meter, dataUrl, key); return; }
-    showToast('Cheie OpenAI lipsă – folosesc Tesseract.', '');
-  } else if (engine === 'gemini') {
-    const key = localStorage.getItem('geminiApiKey') || '';
-    if (key) { await analyzeWithGemini(meter, dataUrl, key); return; }
-    showToast('Cheie Gemini lipsă – folosesc Tesseract.', '');
+    if (multi) {
+      await _analyzeMultiEngine(meter, dataUrl);
+      return;
+    }
+
+    if (engine === 'claude') {
+      const key = localStorage.getItem('anthropicApiKey') || '';
+      if (key) { await analyzeWithClaude(meter, dataUrl, key); return; }
+      showToast('Cheie Claude lipsă – folosesc Tesseract.', '');
+    } else if (engine === 'openai') {
+      const key = localStorage.getItem('openaiApiKey') || '';
+      if (key) { await analyzeWithOpenAI(meter, dataUrl, key); return; }
+      showToast('Cheie OpenAI lipsă – folosesc Tesseract.', '');
+    } else if (engine === 'gemini') {
+      const key = localStorage.getItem('geminiApiKey') || '';
+      if (key) { await analyzeWithGemini(meter, dataUrl, key); return; }
+      showToast('Cheie Gemini lipsă – folosesc Tesseract.', '');
+    }
+    await analyzeWithTesseract(meter, dataUrl);
+  } finally {
+    _processing[meter] = false;
+    _setMeterButtonsDisabled(meter, false);
+    delete _abortControllers[meter];
   }
-  await analyzeWithTesseract(meter, dataUrl);
+}
+
+function _setMeterButtonsDisabled(meter, disabled) {
+  const card = document.getElementById('card-' + meter);
+  if (!card) return;
+  card.querySelectorAll('.btn-row .btn, .btn-row label.btn').forEach(btn => {
+    if (disabled) { btn.setAttribute('disabled', ''); btn.style.opacity = '0.5'; btn.style.pointerEvents = 'none'; }
+    else { btn.removeAttribute('disabled'); btn.style.opacity = ''; btn.style.pointerEvents = ''; }
+  });
+  // Show/hide cancel button
+  const statusEl = document.getElementById('status-' + meter);
+  let cancelBtn = document.getElementById('cancel-' + meter);
+  if (disabled) {
+    if (!cancelBtn) {
+      cancelBtn = document.createElement('button');
+      cancelBtn.id = 'cancel-' + meter;
+      cancelBtn.className = 'btn';
+      cancelBtn.style.cssText = 'font-size:11px;padding:4px 10px;margin-left:8px;background:var(--accent-red,#e74c3c);color:#fff;border:none;border-radius:6px;cursor:pointer;vertical-align:middle;';
+      cancelBtn.textContent = '✕ Anulează';
+      cancelBtn.onclick = () => _cancelAnalysis(meter);
+      statusEl?.parentNode?.insertBefore(cancelBtn, statusEl.nextSibling);
+    }
+    cancelBtn.style.display = '';
+  } else if (cancelBtn) {
+    cancelBtn.remove();
+  }
+}
+
+function _cancelAnalysis(meter) {
+  // Abort API calls
+  if (_abortControllers[meter]) { try { _abortControllers[meter].abort(); } catch(_){} }
+  // Terminate Tesseract worker
+  if (_tessWorkers[meter]) { try { _tessWorkers[meter].terminate(); } catch(_){} delete _tessWorkers[meter]; }
+  showToast('Analiză anulată.', '');
 }
 
 function _getSelectedEngine() {
@@ -1059,8 +1131,21 @@ async function _analyzeMultiEngine(meter, dataUrl) {
   if (best.index)  valInput.value   = best.index;
   if (best.serie)  serieInput.value = best.serie;
   const allOk = !!(best.index && best.serie);
+
+  // Multi-engine comparison summary
+  const compSummary = results.map(r => r.engine + ' ' + r.avgConf + '%').join(' │ ');
   statusEl.textContent = '🏆 ' + best.engine + ' · index: ' + (best.index||'?') + ' · serie: ' + (best.serie||'?');
   statusEl.className = 'reading-status ' + (allOk ? 'status-ok' : 'status-pending');
+  // Show comparison row under status
+  let compEl = document.getElementById('multi-comp-' + meter);
+  if (!compEl) {
+    compEl = document.createElement('div');
+    compEl.id = 'multi-comp-' + meter;
+    compEl.style.cssText = 'font-family:DM Mono,monospace;font-size:10px;color:var(--muted);margin-top:4px;';
+    statusEl.parentElement.insertBefore(compEl, statusEl.nextSibling);
+  }
+  compEl.textContent = '⚖ ' + compSummary;
+
   if (allOk) { card.classList.remove('active'); card.classList.add('done'); }
   updateOverlay(meter, best.index || '?', best.serie || '?', best.confIdx, best.confSerie);
   renderConfPill(meter, best.avgConf, allOk);
@@ -1088,8 +1173,12 @@ async function analyzeWithClaude(meter, dataUrl, apiKey) {
   const mediaType = dataUrl.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
 
   try {
+    const ac = new AbortController();
+    _abortControllers[meter] = ac;
+    const timeout = setTimeout(() => ac.abort(), API_TIMEOUT_MS);
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
+      signal: ac.signal,
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey,
@@ -1108,6 +1197,7 @@ async function analyzeWithClaude(meter, dataUrl, apiKey) {
         }]
       })
     });
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errBody = await response.text().catch(() => '');
@@ -1184,56 +1274,74 @@ async function analyzeWithClaude(meter, dataUrl, apiKey) {
 async function _singleClaudeResult(meter, dataUrl, apiKey) {
   const base64   = dataUrl.split(',')[1];
   const mediaType= dataUrl.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey,
-      'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 200, messages: [{
-      role: 'user', content: [
-        { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
-        { type: 'text', text: _meterPrompt() }
-      ]
-    }]})
-  });
-  if (!response.ok) throw new Error('Claude HTTP ' + response.status);
-  const data = await response.json();
-  return _parseAiJson((data.content?.[0]?.text || '').trim());
+  const ac = new AbortController();
+  const timeout = setTimeout(() => ac.abort(), API_TIMEOUT_MS);
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      signal: ac.signal,
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
+      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 200, messages: [{
+        role: 'user', content: [
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+          { type: 'text', text: _meterPrompt() }
+        ]
+      }]})
+    });
+    clearTimeout(timeout);
+    if (!response.ok) throw new Error('Claude HTTP ' + response.status);
+    const data = await response.json();
+    return _parseAiJson((data.content?.[0]?.text || '').trim());
+  } finally { clearTimeout(timeout); }
 }
 
 async function _singleOpenAIResult(meter, dataUrl, apiKey) {
-  const response = await fetch('https://api.openai.com/v1/chat/completions', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
-    body: JSON.stringify({
-      model: 'gpt-4o', max_tokens: 200,
-      messages: [{ role: 'user', content: [
-        { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } },
-        { type: 'text', text: _meterPrompt() }
-      ]}]
-    })
-  });
-  if (!response.ok) throw new Error('OpenAI HTTP ' + response.status);
-  const data = await response.json();
-  return _parseAiJson((data.choices?.[0]?.message?.content || '').trim());
+  const ac = new AbortController();
+  const timeout = setTimeout(() => ac.abort(), API_TIMEOUT_MS);
+  try {
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      signal: ac.signal,
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+      body: JSON.stringify({
+        model: 'gpt-4o', max_tokens: 200,
+        messages: [{ role: 'user', content: [
+          { type: 'image_url', image_url: { url: dataUrl, detail: 'high' } },
+          { type: 'text', text: _meterPrompt() }
+        ]}]
+      })
+    });
+    clearTimeout(timeout);
+    if (!response.ok) throw new Error('OpenAI HTTP ' + response.status);
+    const data = await response.json();
+    return _parseAiJson((data.choices?.[0]?.message?.content || '').trim());
+  } finally { clearTimeout(timeout); }
 }
 
 async function _singleGeminiResult(meter, dataUrl, apiKey) {
   const base64   = dataUrl.split(',')[1];
   const mediaType= dataUrl.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
-  const response = await fetch(
-    'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + encodeURIComponent(apiKey),
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [
-        { inline_data: { mime_type: mediaType, data: base64 } },
-        { text: _meterPrompt() }
-      ]}]})
-    }
-  );
-  if (!response.ok) throw new Error('Gemini HTTP ' + response.status);
-  const data = await response.json();
-  return _parseAiJson((data.candidates?.[0]?.content?.parts?.[0]?.text || '').trim());
+  const ac = new AbortController();
+  const timeout = setTimeout(() => ac.abort(), API_TIMEOUT_MS);
+  try {
+    const response = await fetch(
+      'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + encodeURIComponent(apiKey),
+      {
+        method: 'POST',
+        signal: ac.signal,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [
+          { inline_data: { mime_type: mediaType, data: base64 } },
+          { text: _meterPrompt() }
+        ]}]})
+      }
+    );
+    clearTimeout(timeout);
+    if (!response.ok) throw new Error('Gemini HTTP ' + response.status);
+    const data = await response.json();
+    return _parseAiJson((data.candidates?.[0]?.content?.parts?.[0]?.text || '').trim());
+  } finally { clearTimeout(timeout); }
 }
 
 async function _runTesseractOnce(meter, dataUrl) {
@@ -1244,6 +1352,7 @@ async function _singleTesseractResult(dataUrl) {
   const variants  = await _createImageVariants(dataUrl);
   const psmModes  = ['6','7'];
   const worker    = await Tesseract.createWorker('eng');
+  try {
   const results   = [];
   for (const v of variants) {
     for (const psm of psmModes) {
@@ -1262,6 +1371,7 @@ async function _singleTesseractResult(dataUrl) {
     index: voted.index || null, serie: voted.serie || null,
     confIdx, confSerie, avgConf: Math.round((confIdx + confSerie) / 2)
   };
+  } catch(e) { try { await worker.terminate(); } catch(_){} throw e; }
 }
 
 function _meterPrompt() {
@@ -1369,16 +1479,26 @@ async function analyzeWithTesseract(meter, dataUrl) {
   statusEl.innerHTML = '<span class="spinner"></span>OCR local – pregătire variante imagine…';
   statusEl.className = 'reading-status status-reading';
 
+  let worker = null;
   try {
     const variants = await _createImageVariants(dataUrl);
     const psmModes = ['6', '7']; // PSM 6 = uniform block, PSM 7 = single text line
+    const totalRuns = variants.length * psmModes.length;
     statusEl.innerHTML = '<span class="spinner"></span>OCR local – analizez '
-      + (variants.length * psmModes.length) + ' variante…';
+      + totalRuns + ' variante…';
 
-    const worker = await Tesseract.createWorker('eng');
+    worker = await Tesseract.createWorker('eng');
+    _tessWorkers[meter] = worker;
+
+    // Timeout guard
+    let timedOut = false;
+    const tessTimeout = setTimeout(() => { timedOut = true; try { worker.terminate(); } catch(_){} }, TESS_TIMEOUT_MS);
+
     const results = [];
+    let runCount = 0;
     for (const v of variants) {
       for (const psm of psmModes) {
+        if (timedOut) break;
         await worker.setParameters({
           tessedit_char_whitelist: '0123456789',
           tessedit_pageseg_mode: psm,
@@ -1387,9 +1507,15 @@ async function analyzeWithTesseract(meter, dataUrl) {
         const cands = _extractOcrCandidates(data.text);
         results.push({ variant: v.name, psm, conf: data.confidence,
                        index: cands.index, serie: cands.serie });
+        runCount++;
+        statusEl.innerHTML = '<span class="spinner"></span>OCR local – varianta ' + runCount + '/' + totalRuns + '…';
       }
+      if (timedOut) break;
     }
-    await worker.terminate();
+    clearTimeout(tessTimeout);
+    if (!timedOut) { try { await worker.terminate(); } catch(_){} }
+    worker = null;
+    delete _tessWorkers[meter];
 
     const voted = _voteOcr(results);
     const nRuns = results.length;
@@ -1429,6 +1555,8 @@ async function analyzeWithTesseract(meter, dataUrl) {
       + (allOk ? 'verificați valorile.' : 'completați manual.'), allOk ? '' : 'error');
 
   } catch(e) {
+    if (worker) { try { await worker.terminate(); } catch(_){} }
+    delete _tessWorkers[meter];
     statusEl.textContent = '⚠ Eroare OCR local. Introduceți manual.';
     statusEl.className   = 'reading-status status-pending';
     updateOverlay(meter, '?', '?', 0, 0);
@@ -1673,7 +1801,8 @@ function renderConfPill(meter, avgConf, allOk) {
   const tier  = avgConf >= 85 ? 'high' : avgConf >= 60 ? 'medium' : 'low';
   const icon  = avgConf >= 85 ? '✓' : avgConf >= 60 ? '⚠' : '✗';
   const label = avgConf >= 85 ? 'Confidență ridicată' : avgConf >= 60 ? 'Verificați valorile' : 'Confidență scăzută';
-  el.innerHTML = `<span class="conf-pill ${tier}">${icon} ${label} · ${avgConf}%</span>`;
+  const tierText = avgConf >= 85 ? 'RIDICAT' : avgConf >= 60 ? 'MEDIU' : 'SCĂZUT';
+  el.innerHTML = `<span class="conf-pill ${tier}">${icon} ${label} · ${avgConf}% (${tierText})</span>`;
 }
 
 // User edits overlay → sync to card inputs below + update table
@@ -1839,11 +1968,13 @@ function shareWhatsApp() {
   showToast('Se deschide WhatsApp\u2026', 'success');
 }
 function resetAll() {
+  if (!confirm('Resetați toate citirile?')) return;
   meters.forEach(m => retryMeter(m));
   document.getElementById('apNr').value = '';
   document.getElementById('proprietar').value = '';
   document.getElementById('nrPers').value = '1';
   meters.forEach(m => { document.getElementById('old-' + m).value = ''; });
+  _dirty.flag = false;
   updateTable();
   showToast('Formular resetat.', '');
 }
@@ -1861,9 +1992,9 @@ function saveReadings() {
     ap, luna,
     proprietar: g('proprietar'), nrPers: g('nrPers'),
     meters: {
-      bucatarie:   { val: g('val-bucatarie'),  serie: g('serie-bucatarie')  },
-      'baia-mare': { val: g('val-baia-mare'),  serie: g('serie-baia-mare')  },
-      'baia-mica': { val: g('val-baia-mica'),  serie: g('serie-baia-mica')  },
+      bucatarie:   { val: g('val-bucatarie'),  serie: g('serie-bucatarie'),  old: g('old-bucatarie')  },
+      'baia-mare': { val: g('val-baia-mare'),  serie: g('serie-baia-mare'),  old: g('old-baia-mare')  },
+      'baia-mica': { val: g('val-baia-mica'),  serie: g('serie-baia-mica'),  old: g('old-baia-mica')  },
     },
     savedAt: new Date().toISOString(),
   };
@@ -1874,12 +2005,17 @@ function saveReadings() {
   history[ap] = history[ap].slice(0, 24); // keep last 24 months per apartment
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+    _dirty.flag = false;
     showToast('Citiri salvate local pentru ' + luna + '.', 'success');
     // Update the history tab select if already rendered
     const histSel = document.getElementById('hist-ap-select');
     if (histSel) { if (![...histSel.options].some(o => o.value === ap)) { const o = document.createElement('option'); o.value = ap; o.textContent = 'Ap. ' + ap; histSel.appendChild(o); } histSel.value = ap; }
   } catch(e) {
-    showToast('Eroare la salvare locală.', 'error');
+    if (e.name === 'QuotaExceededError' || e.code === 22) {
+      showToast('Spațiul de stocare local este plin. Ștergeți citiri vechi din Istoric.', 'error');
+    } else {
+      showToast('Eroare la salvare locală.', 'error');
+    }
   }
 }
 
@@ -1901,6 +2037,27 @@ function tryAutoFillOldIndex() {
     if (serieInp  && mData && mData.serie && !serieInp.value)  { serieInp.value  = mData.serie; }
   });
   if (filled > 0) { updateTable(); showToast('Index vechi precompletat din ' + prev.luna + '.', 'success'); }
+}
+
+function repeatLastMonth() {
+  const history = _loadHistory();
+  const allEntries = Object.values(history).flat();
+  if (!allEntries.length) { showToast('Nu există citiri anterioare salvate.', 'error'); return; }
+  allEntries.sort((a, b) => (b.savedAt || '').localeCompare(a.savedAt || ''));
+  const last = allEntries[0];
+  if (last.ap)          document.getElementById('apNr').value        = last.ap;
+  if (last.proprietar)  document.getElementById('proprietar').value  = last.proprietar;
+  if (last.nrPers)      document.getElementById('nrPers').value      = last.nrPers;
+  meters.forEach(m => {
+    const mData = last.meters && last.meters[m];
+    if (!mData) return;
+    const oldInput   = document.getElementById('old-'   + m);
+    const serieInput = document.getElementById('serie-' + m);
+    if (oldInput   && mData.val)   oldInput.value   = mData.val;
+    if (serieInput && mData.serie) serieInput.value  = mData.serie;
+  });
+  updateTable();
+  showToast('Date precompletate din ' + (last.luna || 'ultima citire') + '.', 'success');
 }
 
 function _loadHistory() {
@@ -2120,6 +2277,8 @@ function showCropModal(meter, dataUrl) {
     canvas.width  = Math.round(_cropImg.width  * _cropScale);
     canvas.height = Math.round(_cropImg.height * _cropScale);
     _drawCropCanvas();
+    // Auto-focus canvas for keyboard users
+    setTimeout(() => canvas.focus(), 100);
   };
   _cropImg.src = dataUrl;
 }
@@ -2255,7 +2414,66 @@ function showToast(msg, type) {
   t.className = 'toast show ' + type;
   clearTimeout(t._timer);
   t._timer = setTimeout(() => { t.className = 'toast'; }, 3500);
+  // Announce to screen readers
+  const sr = document.getElementById('sr-live');
+  if (sr) sr.textContent = msg;
 }
+
+// ── Escape key closes crop modal ──────────────────────────────────────────────
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.getElementById('crop-modal').style.display === 'flex') {
+    closeCropModal();
+  }
+});
+
+// ── Focus trap in crop modal ──────────────────────────────────────────────────
+
+document.addEventListener('keydown', (e) => {
+  const modal = document.getElementById('crop-modal');
+  if (modal.style.display !== 'flex' || e.key !== 'Tab') return;
+  const focusable = modal.querySelectorAll('button, canvas[tabindex], [tabindex]:not([tabindex="-1"])');
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last  = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault(); last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault(); first.focus();
+  }
+});
+
+// ── Crop image rotation ───────────────────────────────────────────────────────
+
+function rotateCropImage(degrees) {
+  if (!_cropImg) return;
+  const offscreen = document.createElement('canvas');
+  const rad = (degrees * Math.PI) / 180;
+  const isQuarter = Math.abs(degrees) === 90 || Math.abs(degrees) === 270;
+  offscreen.width  = isQuarter ? _cropImg.naturalHeight : _cropImg.naturalWidth;
+  offscreen.height = isQuarter ? _cropImg.naturalWidth  : _cropImg.naturalHeight;
+  const ctx = offscreen.getContext('2d');
+  ctx.translate(offscreen.width / 2, offscreen.height / 2);
+  ctx.rotate(rad);
+  ctx.drawImage(_cropImg, -_cropImg.naturalWidth / 2, -_cropImg.naturalHeight / 2);
+  const rotatedUrl = offscreen.toDataURL('image/jpeg', 0.95);
+  _cropDataUrl = rotatedUrl;
+  _cropRect = null;
+  const newImg = new Image();
+  newImg.onload = () => {
+    _cropImg = newImg;
+    const canvas = document.getElementById('crop-canvas');
+    const maxW = Math.min(window.innerWidth - 64, 820);
+    const maxH = Math.floor(window.innerHeight * 0.62);
+    _cropScale = Math.min(maxW / newImg.width, maxH / newImg.height, 1);
+    canvas.width  = Math.round(newImg.width  * _cropScale);
+    canvas.height = Math.round(newImg.height * _cropScale);
+    _drawCropCanvas();
+  };
+  newImg.src = rotatedUrl;
+}
+
+// ── Confirm before reset ──────────────────────────────────────────────────────
 </script>
 </body>
 </html>
