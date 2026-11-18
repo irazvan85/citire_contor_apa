@@ -165,6 +165,7 @@
   .conf-pill.high   { background: rgba(38,196,133,0.15); color: var(--green); border: 1px solid rgba(38,196,133,0.3); }
   .conf-pill.medium { background: rgba(240,165,0,0.12);  color: #f0a500;      border: 1px solid rgba(240,165,0,0.3); }
   .conf-pill.low    { background: rgba(248,81,73,0.12);  color: var(--red);   border: 1px solid rgba(248,81,73,0.3); }
+  .conf-pill.na     { background: rgba(139,148,158,0.1); color: var(--muted); border: 1px solid var(--border); }
   .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
   .btn {
     flex: 1; padding: 9px 14px; border-radius: 8px;
@@ -495,6 +496,13 @@
               <div class="engine-card-desc">AI · Tier gratuit disponibil</div>
             </div>
           </label>
+          <label class="engine-card" id="ec-ocrskill">
+            <input type="radio" name="ocrEngine" value="ocrskill" onchange="onEngineChange()">
+            <div class="engine-card-info">
+              <div class="engine-card-name">🔎 OCRSkill</div>
+              <div class="engine-card-desc">OCR · Răspuns direct · Cheie configurată în Vercel</div>
+            </div>
+          </label>
         </div>
       </div>
 
@@ -530,12 +538,15 @@
         </div>
         <p class="api-hint" style="margin-top:4px;">Gemini Flash 1.5 are un tier gratuit. Obțineți cheia de la <em>aistudio.google.com</em>.</p>
       </div>
+      <div class="engine-keys" id="keys-ocrskill">
+        <p class="api-hint">Configurați cheia OCRSkill ca variabilă de mediu <code>OCRSKILL_API_KEY</code> în Vercel. Cheia nu este expusă în browser. O cheie gratuită se poate obține de la <em>api.ocrskill.com/get-key.json</em>. Rezultatul OCR nu include scor de confidență, deci verificați manual valorile detectate.</p>
+      </div>
 
       <!-- Multi-engine option -->
       <div class="multi-engine-row">
         <label>
           <input type="checkbox" id="multiEngineCheck" onchange="updateApiStatus()">
-          Rulează motoarele AI disponibile și alege cel cu confidență mai mare
+          Rulează motoarele AI disponibile și alege cel cu confidență mai mare (OCRSkill nu oferă scor)
         </label>
       </div>
 
@@ -906,6 +917,7 @@ const _tessWorkers = {};       // active Tesseract worker per meter (for cancel)
 const API_TIMEOUT_MS = 30000;  // 30s timeout for AI API calls
 const TESS_TIMEOUT_MS = 60000; // 60s timeout for Tesseract OCR
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
+const MAX_OCRSKILL_UPLOAD_BYTES = 4 * 1024 * 1024; // Keep below Vercel's request body limit
 
 window.addEventListener('beforeunload', (e) => {
   // Stop any active camera streams
@@ -1048,6 +1060,9 @@ async function analyzeImage(meter, dataUrl) {
       const key = localStorage.getItem('geminiApiKey') || '';
       if (key) { await analyzeWithGemini(meter, dataUrl, key); return; }
       showToast('Cheie Gemini lipsă – folosesc Tesseract.', '');
+    } else if (engine === 'ocrskill') {
+      await analyzeWithOcrSkill(meter, dataUrl);
+      return;
     }
     await analyzeWithTesseract(meter, dataUrl);
   } finally {
@@ -1111,6 +1126,7 @@ async function _analyzeMultiEngine(meter, dataUrl) {
   if (claudeKey)  tasks.push({ name: 'Claude',  fn: () => _runEngineOnce('claude',  meter, dataUrl, claudeKey) });
   if (openaiKey)  tasks.push({ name: 'OpenAI',  fn: () => _runEngineOnce('openai',  meter, dataUrl, openaiKey) });
   if (geminiKey)  tasks.push({ name: 'Gemini',  fn: () => _runEngineOnce('gemini',  meter, dataUrl, geminiKey) });
+  tasks.push({ name: 'OCRSkill', fn: () => _runEngineOnce('ocrskill', meter, dataUrl) });
   tasks.push({ name: 'Tesseract', fn: () => _runTesseractOnce(meter, dataUrl) });
 
   const settled = await Promise.allSettled(tasks.map(t => t.fn()));
@@ -1122,9 +1138,12 @@ async function _analyzeMultiEngine(meter, dataUrl) {
     await analyzeWithTesseract(meter, dataUrl); return;
   }
 
-  // Pick best by avgConf
-  results.sort((a, b) => b.avgConf - a.avgConf);
-  const best = results[0];
+  // OCRSkill has no confidence score; use it only if scored engines found no readings.
+  const scoredResults = results.filter(r => Number.isFinite(r.avgConf) && (r.index || r.serie));
+  scoredResults.sort((a, b) => b.avgConf - a.avgConf);
+  const best = scoredResults[0]
+    || results.find(r => r.engine === 'OCRSkill' && (r.index || r.serie))
+    || results.sort((a, b) => b.avgConf - a.avgConf)[0];
   const valInput   = document.getElementById('val-'   + meter);
   const serieInput = document.getElementById('serie-' + meter);
   const card       = document.getElementById('card-'  + meter);
@@ -1133,8 +1152,9 @@ async function _analyzeMultiEngine(meter, dataUrl) {
   const allOk = !!(best.index && best.serie);
 
   // Multi-engine comparison summary
-  const compSummary = results.map(r => r.engine + ' ' + r.avgConf + '%').join(' │ ');
-  statusEl.textContent = '🏆 ' + best.engine + ' · index: ' + (best.index||'?') + ' · serie: ' + (best.serie||'?');
+  const compSummary = results.map(r => r.engine + ' ' + (Number.isFinite(r.avgConf) ? r.avgConf + '%' : 'n/a')).join(' │ ');
+  const confidenceNote = Number.isFinite(best.avgConf) ? '' : ' · confidență n/a, verificați manual';
+  statusEl.textContent = '🏆 ' + best.engine + ' · index: ' + (best.index||'?') + ' · serie: ' + (best.serie||'?') + confidenceNote;
   statusEl.className = 'reading-status ' + (allOk ? 'status-ok' : 'status-pending');
   // Show comparison row under status
   let compEl = document.getElementById('multi-comp-' + meter);
@@ -1150,13 +1170,17 @@ async function _analyzeMultiEngine(meter, dataUrl) {
   updateOverlay(meter, best.index || '?', best.serie || '?', best.confIdx, best.confSerie);
   renderConfPill(meter, best.avgConf, allOk);
   updateTable();
-  showToast('Multi-engine: ' + best.engine + ' ales (conf ' + best.avgConf + '%)', allOk ? 'success' : '');
+  showToast(Number.isFinite(best.avgConf)
+    ? 'Multi-engine: ' + best.engine + ' ales (conf ' + best.avgConf + '%)'
+    : 'Multi-engine: ' + best.engine + ' ales. Verificați manual valorile.',
+    allOk && Number.isFinite(best.avgConf) ? 'success' : '');
 }
 
 async function _runEngineOnce(engine, meter, dataUrl, key) {
   if (engine === 'claude')  return _singleClaudeResult(meter, dataUrl, key);
   if (engine === 'openai')  return _singleOpenAIResult(meter, dataUrl, key);
   if (engine === 'gemini')  return _singleGeminiResult(meter, dataUrl, key);
+  if (engine === 'ocrskill') return _singleOcrSkillResult(meter, dataUrl);
   return _singleTesseractResult(dataUrl);
 }
 
@@ -1344,6 +1368,59 @@ async function _singleGeminiResult(meter, dataUrl, apiKey) {
   } finally { clearTimeout(timeout); }
 }
 
+async function _singleOcrSkillResult(meter, dataUrl) {
+  let imageBlob = await fetch(dataUrl).then(response => response.blob());
+  if (imageBlob.size > MAX_OCRSKILL_UPLOAD_BYTES) {
+    const img = await _loadImg(dataUrl);
+    const canvas = document.createElement('canvas');
+    const scale = Math.min(1, 2000 / Math.max(img.naturalWidth, img.naturalHeight));
+    canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+    canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+    canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+
+    let quality = 0.88;
+    do {
+      imageBlob = await new Promise((resolve, reject) => {
+        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Imaginea nu a putut fi comprimată.')),
+          'image/jpeg', quality);
+      });
+      quality -= 0.1;
+    } while (imageBlob.size > MAX_OCRSKILL_UPLOAD_BYTES && quality >= 0.58);
+
+    if (imageBlob.size > MAX_OCRSKILL_UPLOAD_BYTES) {
+      throw new Error('Imaginea este prea mare pentru OCRSkill.');
+    }
+  }
+
+  const contentType = imageBlob.type || 'image/jpeg';
+  const ac = new AbortController();
+  _abortControllers[meter] = ac;
+  const timeout = setTimeout(() => ac.abort(), API_TIMEOUT_MS);
+  try {
+    const response = await fetch('/api/ocrskill', {
+      method: 'POST',
+      signal: ac.signal,
+      headers: { 'Content-Type': contentType },
+      body: imageBlob
+    });
+    if (!response.ok) {
+      const errorText = await response.text().catch(() => '');
+      throw new Error('OCRSkill HTTP ' + response.status + (errorText ? ': ' + errorText.slice(0, 120) : ''));
+    }
+
+    const candidates = _extractOcrCandidates(await response.text());
+    return {
+      index: candidates.index,
+      serie: candidates.serie,
+      confIdx: null,
+      confSerie: null,
+      avgConf: null
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function _runTesseractOnce(meter, dataUrl) {
   return _singleTesseractResult(dataUrl);
 }
@@ -1453,6 +1530,29 @@ async function analyzeWithGemini(meter, dataUrl, apiKey) {
   }
 }
 
+async function analyzeWithOcrSkill(meter, dataUrl) {
+  const statusEl   = document.getElementById('status-' + meter);
+  const valInput   = document.getElementById('val-'    + meter);
+  const serieInput = document.getElementById('serie-'  + meter);
+  const card       = document.getElementById('card-'   + meter);
+
+  statusEl.innerHTML = '<span class="spinner"></span>OCRSkill citește textul din imagine…';
+  statusEl.className = 'reading-status status-reading';
+  try {
+    const result = await _singleOcrSkillResult(meter, dataUrl);
+    _applyAiResult(meter, result, valInput, serieInput, card, statusEl, 'OCRSkill');
+  } catch(e) {
+    if (e.name === 'AbortError') {
+      statusEl.textContent = 'Analiză OCRSkill anulată.';
+      statusEl.className = 'reading-status status-pending';
+      return;
+    }
+    console.warn('OCRSkill API eșuat, se folosește OCR local:', e);
+    showToast('OCRSkill indisponibil – se încearcă OCR local…', '');
+    await analyzeWithTesseract(meter, dataUrl);
+  }
+}
+
 function _applyAiResult(meter, result, valInput, serieInput, card, statusEl, engineName) {
   const { index, serie, confIdx, confSerie, avgConf } = result;
   let msgs = [], idxOk = false, serieOk = false;
@@ -1461,7 +1561,8 @@ function _applyAiResult(meter, result, valInput, serieInput, card, statusEl, eng
   if (serie)  { serieInput.value = serie; serieOk  = true; msgs.push('serie: ' + serie); }
   else        { msgs.push('serie necitită'); }
   const allOk = idxOk && serieOk;
-  statusEl.textContent = (allOk ? '✓ ' : '⚠ ') + engineName + ': ' + msgs.join(' · ');
+  const confidenceNote = Number.isFinite(avgConf) ? '' : ' · confidență indisponibilă, verificați manual';
+  statusEl.textContent = (allOk ? '✓ ' : '⚠ ') + engineName + ': ' + msgs.join(' · ') + confidenceNote;
   statusEl.className  = 'reading-status ' + (allOk ? 'status-ok' : 'status-pending');
   if (allOk) { card.classList.remove('active'); card.classList.add('done'); }
   updateOverlay(meter, index || '?', serie || '?', confIdx, confSerie);
@@ -1696,7 +1797,7 @@ function clearApiKey(storageKey, inputId) {
 
 function onEngineChange() {
   const engine = _getSelectedEngine();
-  ['claude','openai','gemini'].forEach(e => {
+  ['claude','openai','gemini','ocrskill'].forEach(e => {
     document.getElementById('keys-' + e).classList.toggle('visible', engine === e);
     document.getElementById('ec-'   + e).classList.toggle('selected', engine === e);
   });
@@ -1719,6 +1820,7 @@ function updateApiStatus() {
     if (claudeKey) engines.push('Claude');
     if (openaiKey) engines.push('OpenAI');
     if (geminiKey) engines.push('Gemini');
+    engines.push('OCRSkill (fără scor de confidență)');
     engines.push('Tesseract');
     el.textContent = '🏆 Multi-engine: ' + engines.join(' + ');
     el.className = 'api-status active';
@@ -1734,6 +1836,9 @@ function updateApiStatus() {
   } else if (engine === 'gemini') {
     el.textContent = geminiKey ? '✓ Gemini AI activ' : '⚠ Cheie Gemini lipsă – va folosi Tesseract';
     el.className   = 'api-status ' + (geminiKey ? 'active' : 'inactive');
+  } else if (engine === 'ocrskill') {
+    el.textContent = 'OCRSkill selectat · necesită OCRSKILL_API_KEY în Vercel';
+    el.className   = 'api-status inactive';
   } else {
     el.textContent = '🖥 OCR local activ (Tesseract – fără cheie API)';
     el.className   = 'api-status ocr';
@@ -1769,10 +1874,10 @@ function updateOverlay(meter, index, serie, confIdx, confSerie) {
   idxOvEl.value   = isIdxBad   ? '' : index;
   serieOvEl.value = isSerieBad ? '' : serie;
 
-  idxOvEl.classList.toggle('err',  isIdxBad   || confIdx   < 60);
-  idxOvEl.classList.toggle('warn', !isIdxBad  && confIdx   >= 60 && confIdx   < 85);
-  serieOvEl.classList.toggle('err',  isSerieBad || confSerie < 60);
-  serieOvEl.classList.toggle('warn', !isSerieBad && confSerie >= 60 && confSerie < 85);
+  idxOvEl.classList.toggle('err',  isIdxBad   || (Number.isFinite(confIdx)   && confIdx   < 60));
+  idxOvEl.classList.toggle('warn', !isIdxBad  && Number.isFinite(confIdx)    && confIdx   >= 60 && confIdx   < 85);
+  serieOvEl.classList.toggle('err',  isSerieBad || (Number.isFinite(confSerie) && confSerie < 60));
+  serieOvEl.classList.toggle('warn', !isSerieBad && Number.isFinite(confSerie) && confSerie >= 60 && confSerie < 85);
 
   // Confidence bars
   setConfBar(meter, 'idx',   confIdx);
@@ -1788,6 +1893,13 @@ function setConfBar(meter, field, score) {
   const bar = document.getElementById('conf-bar-' + field + '-' + meter);
   const lbl = document.getElementById('conf-lbl-' + field + '-' + meter);
   if (!bar) return;
+  if (!Number.isFinite(score)) {
+    bar.style.width = '0%';
+    bar.style.background = 'var(--muted)';
+    lbl.textContent = 'n/a';
+    lbl.style.color = 'var(--muted)';
+    return;
+  }
   const pct = Math.max(0, Math.min(100, score));
   bar.style.width = pct + '%';
   bar.style.background = pct >= 85 ? 'var(--green)' : pct >= 60 ? '#f0a500' : 'var(--red)';
@@ -1798,6 +1910,10 @@ function setConfBar(meter, field, score) {
 function renderConfPill(meter, avgConf, allOk) {
   const el = document.getElementById('conf-pill-' + meter);
   if (!el) return;
+  if (!Number.isFinite(avgConf)) {
+    el.innerHTML = '<span class="conf-pill na">ℹ Confidență indisponibilă · verificați manual</span>';
+    return;
+  }
   const tier  = avgConf >= 85 ? 'high' : avgConf >= 60 ? 'medium' : 'low';
   const icon  = avgConf >= 85 ? '✓' : avgConf >= 60 ? '⚠' : '✗';
   const label = avgConf >= 85 ? 'Confidență ridicată' : avgConf >= 60 ? 'Verificați valorile' : 'Confidență scăzută';
